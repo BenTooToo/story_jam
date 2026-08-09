@@ -64,16 +64,16 @@ func _run_intro() -> void:
 	)
 	await descend.finished
 
-	# 到达：叮一声，播完再开门
+	# 到达：叮一声，地板随之浮现，播完再开门
 	_sfx_arrive.play()
-	await _sfx_arrive.finished
-	await get_tree().create_timer(door_delay).timeout
-
-	# 开门：门内光束随门缝亮起，地板浮现
-	_sfx_door_move.play()
 	var reveal := create_tween()
 	reveal.tween_property(_floor.material, "shader_parameter/fade", 1.0, floor_fade_duration) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _sfx_arrive.finished
+	await get_tree().create_timer(door_delay).timeout
+
+	# 开门：门内光束随门缝亮起
+	_sfx_door_move.play()
 	var open := create_tween()
 	open.tween_method(_set_door_progress, 0.0, 1.0, door_duration) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

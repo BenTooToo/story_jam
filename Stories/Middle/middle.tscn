@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://b7a3gksdc1roa"]
+[gd_scene format=3]
 
 [ext_resource type="Texture2D" uid="uid://bhndsgqh7d5ne" path="res://Assets/Edited/电梯箱.png" id="1_hnpdv"]
 [ext_resource type="Script" uid="uid://b8qxweylo5w05" path="res://Stories/Start/start.gd" id="1_start"]
@@ -49,42 +49,6 @@ animations = [{
 "speed": 6.0
 }]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_v3hjj"]
-atlas = ExtResource("2_xvhka")
-region = Rect2(0, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_6pnsx"]
-atlas = ExtResource("2_xvhka")
-region = Rect2(256, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_hvhss"]
-atlas = ExtResource("2_xvhka")
-region = Rect2(512, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_osgqv"]
-atlas = ExtResource("2_xvhka")
-region = Rect2(768, 0, 256, 256)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_5vxnu"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_v3hjj")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_6pnsx")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_hvhss")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_osgqv")
-}],
-"loop": true,
-"name": &"default",
-"speed": 5.0
-}]
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_shafts"]
 shader = ExtResource("10_shafts")
 shader_parameter/angle_deg = 8.0
@@ -123,7 +87,7 @@ seamless = true
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1ogsl"]
 shader = ExtResource("5_nrv0d")
 shader_parameter/wave_noise = SubResource("NoiseTexture2D_floor")
-shader_parameter/floor_tint = Color(0.3439734, 0.48433888, 0.639842, 1)
+shader_parameter/floor_tint = Color(0.6, 0.4, 0.74, 1)
 shader_parameter/tint_amount = 0.6
 shader_parameter/depth_dim = 0.35
 shader_parameter/perspective = 0.35
@@ -132,8 +96,10 @@ shader_parameter/reflection_falloff = 2.5
 shader_parameter/blur_depth = 2.0
 shader_parameter/fade = 1.0
 
-[node name="Start" type="Node2D" unique_id=741404220]
+[node name="Middle" type="Node2D" unique_id=741404220]
 script = ExtResource("1_start")
+floor_from = 16
+floor_to = 8
 
 [node name="BackGround" type="Node2D" parent="." unique_id=225464590]
 metadata/_edit_lock_ = true
@@ -163,14 +129,6 @@ autoplay = "default"
 frame_progress = 0.18691622
 metadata/_edit_lock_ = true
 
-[node name="NPC1" type="AnimatedSprite2D" parent="Elevator/NPCs" unique_id=1430574580]
-position = Vector2(352, 202.7)
-scale = Vector2(-0.586, 0.586)
-sprite_frames = SubResource("SpriteFrames_5vxnu")
-autoplay = "default"
-frame_progress = 0.67914385
-metadata/_edit_lock_ = true
-
 [node name="LightShafts" type="ColorRect" parent="Elevator" unique_id=444845184]
 material = SubResource("ShaderMaterial_shafts")
 offset_left = 234.0
@@ -180,13 +138,11 @@ offset_bottom = 292.0
 mouse_filter = 2
 
 [node name="ElevatorLeftDoor" type="Sprite2D" parent="Elevator" unique_id=62060683]
-visible = false
 position = Vector2(278.5, 184.5)
 texture = ExtResource("2_g35lk")
 metadata/_edit_lock_ = true
 
 [node name="ElevatorRightDoor" type="Sprite2D" parent="Elevator" unique_id=362906647]
-visible = false
 position = Vector2(366.5, 184.5)
 texture = ExtResource("3_xvhka")
 metadata/_edit_lock_ = true
