@@ -1,0 +1,169 @@
+[gd_scene format=3 uid="uid://b7a3gksdc1roa"]
+
+[ext_resource type="Texture2D" uid="uid://bhndsgqh7d5ne" path="res://Assets/Edited/电梯箱.png" id="1_hnpdv"]
+[ext_resource type="Texture2D" uid="uid://caju7k314185s" path="res://Assets/Edited/电梯左门.png" id="2_g35lk"]
+[ext_resource type="Texture2D" uid="uid://3irj5cgltib1" path="res://Assets/Prof. Gao/npc standing.png" id="2_xvhka"]
+[ext_resource type="Texture2D" uid="uid://crirmww3pi201" path="res://Assets/Edited/电梯右门.png" id="3_xvhka"]
+[ext_resource type="Texture2D" uid="uid://cb18qg7fsygq" path="res://Assets/Edited/数字面板.png" id="5_ajomx"]
+[ext_resource type="Shader" uid="uid://xu6do67e1gws" path="res://Assets/Theme/water.gdshader" id="5_nrv0d"]
+[ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="6_nrv0d"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5wckm"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(0, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ajomx"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(256, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nrv0d"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(512, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1ogsl"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(768, 256, 256, 256)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_t8ica"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5wckm")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ajomx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_nrv0d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1ogsl")
+}],
+"loop": true,
+"name": &"default",
+"speed": 6.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v3hjj"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(0, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6pnsx"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(256, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hvhss"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(512, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_osgqv"]
+atlas = ExtResource("2_xvhka")
+region = Rect2(768, 0, 256, 256)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_5vxnu"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v3hjj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6pnsx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hvhss")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_osgqv")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1ogsl"]
+shader = ExtResource("5_nrv0d")
+shader_parameter/floor_tint = Color(0.3439734, 0.48433888, 0.639842, 1)
+shader_parameter/tint_amount = 0.6
+shader_parameter/depth_dim = 0.35
+shader_parameter/distortion = 0.007
+shader_parameter/gloss = 0.18
+shader_parameter/wave_speed = 0.02
+
+[node name="Start" type="Node2D" unique_id=741404220]
+
+[node name="BackGround" type="Node2D" parent="." unique_id=225464590]
+metadata/_edit_lock_ = true
+
+[node name="ColorRect1" type="ColorRect" parent="BackGround" unique_id=1433938877]
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0, 0, 0, 1)
+
+[node name="Elevator" type="Node2D" parent="." unique_id=234406830]
+
+[node name="ElevatorCar" type="Sprite2D" parent="Elevator" unique_id=860769425]
+position = Vector2(320, 180)
+texture = ExtResource("1_hnpdv")
+
+[node name="NPCs" type="Node2D" parent="Elevator" unique_id=1860425777]
+
+[node name="NPC0" type="AnimatedSprite2D" parent="Elevator/NPCs" unique_id=1734674074]
+position = Vector2(291, 203.3)
+scale = Vector2(0.58593744, 0.58593744)
+sprite_frames = SubResource("SpriteFrames_t8ica")
+autoplay = "default"
+frame_progress = 0.18691622
+
+[node name="NPC1" type="AnimatedSprite2D" parent="Elevator/NPCs" unique_id=1430574580]
+position = Vector2(352, 202.7)
+scale = Vector2(-0.586, 0.586)
+sprite_frames = SubResource("SpriteFrames_5vxnu")
+autoplay = "default"
+frame_progress = 0.67914385
+
+[node name="ElevatorLeftDoor" type="Sprite2D" parent="Elevator" unique_id=62060683]
+position = Vector2(278.5, 184.5)
+texture = ExtResource("2_g35lk")
+
+[node name="ElevatorRightDoor" type="Sprite2D" parent="Elevator" unique_id=362906647]
+position = Vector2(366.5, 184.5)
+texture = ExtResource("3_xvhka")
+
+[node name="LeftBorder" type="ColorRect" parent="Elevator" unique_id=1068152388]
+offset_top = 93.0
+offset_right = 234.0
+offset_bottom = 276.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_lock_ = true
+
+[node name="RightBorder" type="ColorRect" parent="Elevator" unique_id=927752305]
+offset_left = 411.0
+offset_top = 93.0
+offset_right = 640.0
+offset_bottom = 276.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_lock_ = true
+
+[node name="Floor" type="ColorRect" parent="Elevator" unique_id=712318691]
+material = SubResource("ShaderMaterial_1ogsl")
+offset_top = 292.0
+offset_right = 640.0
+offset_bottom = 458.0
+color = Color(0, 0, 0, 1)
+
+[node name="FloorDisplay" type="Sprite2D" parent="Elevator" unique_id=600792859]
+position = Vector2(451.57245, 102.75)
+scale = Vector2(0.5289855, 0.5289855)
+texture = ExtResource("5_ajomx")
+
+[node name="Label" type="Label" parent="Elevator/FloorDisplay" unique_id=758116005]
+offset_left = -23.767097
+offset_top = -29.773973
+offset_right = 31.054802
+offset_bottom = 28.828764
+theme_override_colors/font_color = Color(0.98265165, 0, 0.15767276, 1)
+theme_override_fonts/font = ExtResource("6_nrv0d")
+theme_override_font_sizes/font_size = 54
+text = "16"
+horizontal_alignment = 1
+vertical_alignment = 1
