@@ -19,6 +19,9 @@ uniform float distortion : hint_range(0.0, 0.03) = 0.007;
 // Slow moving specular streaks that read as a wet/polished sheen.
 uniform float gloss : hint_range(0.0, 1.0) = 0.18;
 uniform float wave_speed = 0.02;
+// Fake floor perspective: how much wider the reflection spreads at the bottom
+// edge (0 = straight mirror, 0.35 = bottom row is 35% wider than the top).
+uniform float perspective : hint_range(0.0, 1.0) = 0.35;
 
 void fragment() {
 	// depth: 0 at the seam (top), 1 at the far edge (bottom).
@@ -30,8 +33,11 @@ void fragment() {
 	vec2 wobble = (texture(wave_noise, UV * vec2(1.0, 3.0) + TIME * wave_speed).rg - 0.5)
 				  * distortion * ripple_mask;
 
-	// Mirror the whole scene above into the floor.
-	vec2 ruv = vec2(SCREEN_UV.x, SCREEN_UV.y - UV.y) + wobble;
+	// Mirror the whole scene above into the floor. Keystone warp: the top row
+	// samples 1:1 (keeps the seam), lower rows sample a slice squeezed toward
+	// the screen centre so the reflection fans out wider toward the bottom.
+	float spread = 1.0 + perspective * depth;
+	vec2 ruv = vec2(0.5 + (SCREEN_UV.x - 0.5) / spread, SCREEN_UV.y - UV.y) + wobble;
 	vec3 reflection = texture(screen_texture, ruv).rgb;
 
 	// Tint ramps in with depth; at depth 0 there is no tint, so the seam matches

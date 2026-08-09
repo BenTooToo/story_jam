@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://b7a3gksdc1roa"]
 
 [ext_resource type="Texture2D" uid="uid://bhndsgqh7d5ne" path="res://Assets/Edited/电梯箱.png" id="1_hnpdv"]
+[ext_resource type="Script" uid="uid://b8qxweylo5w05" path="res://Stories/Start/start.gd" id="1_start"]
 [ext_resource type="Texture2D" uid="uid://caju7k314185s" path="res://Assets/Edited/电梯左门.png" id="2_g35lk"]
 [ext_resource type="Texture2D" uid="uid://3irj5cgltib1" path="res://Assets/Prof. Gao/npc standing.png" id="2_xvhka"]
 [ext_resource type="Texture2D" uid="uid://crirmww3pi201" path="res://Assets/Edited/电梯右门.png" id="3_xvhka"]
@@ -88,8 +89,10 @@ shader_parameter/depth_dim = 0.35
 shader_parameter/distortion = 0.007
 shader_parameter/gloss = 0.18
 shader_parameter/wave_speed = 0.02
+shader_parameter/perspective = 0.35
 
 [node name="Start" type="Node2D" unique_id=741404220]
+script = ExtResource("1_start")
 
 [node name="BackGround" type="Node2D" parent="." unique_id=225464590]
 metadata/_edit_lock_ = true
@@ -144,13 +147,6 @@ offset_bottom = 276.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
 
-[node name="Floor" type="ColorRect" parent="Elevator" unique_id=712318691]
-material = SubResource("ShaderMaterial_1ogsl")
-offset_top = 292.0
-offset_right = 640.0
-offset_bottom = 458.0
-color = Color(0, 0, 0, 1)
-
 [node name="FloorDisplay" type="Sprite2D" parent="Elevator" unique_id=600792859]
 position = Vector2(451.57245, 102.75)
 scale = Vector2(0.5289855, 0.5289855)
@@ -167,3 +163,10 @@ theme_override_font_sizes/font_size = 54
 text = "16"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Floor" type="ColorRect" parent="." unique_id=712318691]
+material = SubResource("ShaderMaterial_1ogsl")
+offset_top = 292.0
+offset_right = 640.0
+offset_bottom = 413.0
+color = Color(0, 0, 0, 1)
