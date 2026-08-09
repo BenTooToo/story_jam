@@ -8,6 +8,10 @@
 [ext_resource type="Texture2D" uid="uid://cb18qg7fsygq" path="res://Assets/Edited/数字面板.png" id="5_ajomx"]
 [ext_resource type="Shader" uid="uid://xu6do67e1gws" path="res://Assets/Theme/water.gdshader" id="5_nrv0d"]
 [ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="6_nrv0d"]
+[ext_resource type="AudioStream" uid="uid://c7mofl7i6l3km" path="res://Assets/Sound Effects/电梯到达.mp3" id="7_arrive"]
+[ext_resource type="AudioStream" uid="uid://cqxfeshujoeta" path="res://Assets/Sound Effects/电梯门移动.mp3" id="8_doors"]
+[ext_resource type="AudioStream" uid="uid://trf00tqj0q2m" path="res://Assets/Sound Effects/哐当.mp3" id="9_clank"]
+[ext_resource type="Shader" uid="uid://diw4b5iye7y1" path="res://Assets/Theme/light_shafts.gdshader" id="10_shafts"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5wckm"]
 atlas = ExtResource("2_xvhka")
@@ -81,15 +85,52 @@ animations = [{
 "speed": 5.0
 }]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_shafts"]
+shader = ExtResource("10_shafts")
+shader_parameter/angle_deg = 8.0
+shader_parameter/beam_count = 3
+shader_parameter/beam_pos_a = -0.18
+shader_parameter/beam_pos_b = 0.1
+shader_parameter/spread = 0.7
+shader_parameter/seed = 7.0
+shader_parameter/shaft_w = 0.1
+shader_parameter/sway = 0.02
+shader_parameter/sway_speed = 0.35
+shader_parameter/fade_start = 0.05
+shader_parameter/fade_end = 1.15
+shader_parameter/dust_amount = 0.5
+shader_parameter/dust_scale = 26.0
+shader_parameter/dust_speed = 0.12
+shader_parameter/pulse_amount = 0.12
+shader_parameter/pulse_speed = 0.5
+shader_parameter/light_color = Color(1, 0.94, 0.78, 1)
+shader_parameter/intensity = 0.5
+shader_parameter/aspect = Vector2(0.89, 1)
+shader_parameter/clip_enable = 0.0
+shader_parameter/clip_aspect = Vector2(1.7778, 1)
+shader_parameter/line_center = 0.0
+shader_parameter/tilt = 0.0
+shader_parameter/clip_side = 1.0
+shader_parameter/clip_feather = 0.003
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_floor"]
+frequency = 0.008
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_floor"]
+noise = SubResource("FastNoiseLite_floor")
+seamless = true
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1ogsl"]
 shader = ExtResource("5_nrv0d")
+shader_parameter/wave_noise = SubResource("NoiseTexture2D_floor")
 shader_parameter/floor_tint = Color(0.3439734, 0.48433888, 0.639842, 1)
 shader_parameter/tint_amount = 0.6
 shader_parameter/depth_dim = 0.35
-shader_parameter/distortion = 0.007
-shader_parameter/gloss = 0.18
-shader_parameter/wave_speed = 0.02
 shader_parameter/perspective = 0.35
+shader_parameter/reflection_strength = 0.45
+shader_parameter/reflection_falloff = 2.5
+shader_parameter/blur_depth = 2.0
+shader_parameter/fade = 1.0
 
 [node name="Start" type="Node2D" unique_id=741404220]
 script = ExtResource("1_start")
@@ -101,21 +142,26 @@ metadata/_edit_lock_ = true
 offset_right = 640.0
 offset_bottom = 360.0
 color = Color(0, 0, 0, 1)
+metadata/_edit_lock_ = true
 
 [node name="Elevator" type="Node2D" parent="." unique_id=234406830]
+metadata/_edit_lock_ = true
 
 [node name="ElevatorCar" type="Sprite2D" parent="Elevator" unique_id=860769425]
 position = Vector2(320, 180)
 texture = ExtResource("1_hnpdv")
+metadata/_edit_lock_ = true
 
 [node name="NPCs" type="Node2D" parent="Elevator" unique_id=1860425777]
+metadata/_edit_lock_ = true
 
 [node name="NPC0" type="AnimatedSprite2D" parent="Elevator/NPCs" unique_id=1734674074]
-position = Vector2(291, 203.3)
-scale = Vector2(0.58593744, 0.58593744)
+position = Vector2(291, 207.8)
+scale = Vector2(0.55, 0.55)
 sprite_frames = SubResource("SpriteFrames_t8ica")
 autoplay = "default"
 frame_progress = 0.18691622
+metadata/_edit_lock_ = true
 
 [node name="NPC1" type="AnimatedSprite2D" parent="Elevator/NPCs" unique_id=1430574580]
 position = Vector2(352, 202.7)
@@ -123,14 +169,25 @@ scale = Vector2(-0.586, 0.586)
 sprite_frames = SubResource("SpriteFrames_5vxnu")
 autoplay = "default"
 frame_progress = 0.67914385
+metadata/_edit_lock_ = true
+
+[node name="LightShafts" type="ColorRect" parent="Elevator" unique_id=444845184]
+material = SubResource("ShaderMaterial_shafts")
+offset_left = 234.0
+offset_top = 93.0
+offset_right = 411.0
+offset_bottom = 292.0
+mouse_filter = 2
 
 [node name="ElevatorLeftDoor" type="Sprite2D" parent="Elevator" unique_id=62060683]
 position = Vector2(278.5, 184.5)
 texture = ExtResource("2_g35lk")
+metadata/_edit_lock_ = true
 
 [node name="ElevatorRightDoor" type="Sprite2D" parent="Elevator" unique_id=362906647]
 position = Vector2(366.5, 184.5)
 texture = ExtResource("3_xvhka")
+metadata/_edit_lock_ = true
 
 [node name="LeftBorder" type="ColorRect" parent="Elevator" unique_id=1068152388]
 offset_top = 93.0
@@ -170,3 +227,13 @@ offset_top = 292.0
 offset_right = 640.0
 offset_bottom = 413.0
 color = Color(0, 0, 0, 1)
+
+[node name="SfxArrive" type="AudioStreamPlayer" parent="." unique_id=881031023]
+stream = ExtResource("7_arrive")
+
+[node name="SfxDoorMove" type="AudioStreamPlayer" parent="." unique_id=1927785929]
+stream = ExtResource("8_doors")
+volume_db = 4.0
+
+[node name="SfxClank" type="AudioStreamPlayer" parent="." unique_id=68543835]
+stream = ExtResource("9_clank")
