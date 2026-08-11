@@ -1,26 +1,17 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://bi4qcxlw7dkmj"]
 
-[ext_resource type="Script" path="res://Stories/Shared/Dialogue/dialogue_box.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://Assets/ROMART/对话框.png" id="2_box"]
-[ext_resource type="FontFile" path="res://Assets/Theme/像素字体.ttf" id="3_font"]
+[ext_resource type="Script" uid="uid://dioq4sp52s5it" path="res://Stories/Shared/Dialogue/dialogue_box.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bgtf5r5m3b474" path="res://Assets/ROMART/对话框.png" id="2_box"]
+[ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="3_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_choices"]
-bg_color = Color(0.08, 0.08, 0.1, 0.94)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.85, 0.85, 0.88, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
+bg_color = Color(0, 0, 0, 0)
 
-[node name="DialogueBox" type="CanvasLayer"]
+[node name="DialogueBox" type="CanvasLayer" unique_id=1487754459]
 layer = 100
 script = ExtResource("1_script")
 
-[node name="Root" type="Control" parent="."]
+[node name="Root" type="Control" parent="." unique_id=1934891865]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -29,7 +20,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 
-[node name="Frame" type="TextureRect" parent="Root"]
+[node name="Frame" type="TextureRect" parent="Root" unique_id=487560966]
+modulate = Color(1, 1, 1, 0.8392157)
 layout_mode = 0
 offset_left = 17.0
 offset_top = 210.0
@@ -39,7 +31,7 @@ mouse_filter = 2
 texture = ExtResource("2_box")
 expand_mode = 1
 
-[node name="Portrait" type="TextureRect" parent="Root"]
+[node name="Portrait" type="TextureRect" parent="Root" unique_id=252508912]
 layout_mode = 0
 offset_left = 22.0
 offset_top = 210.0
@@ -49,7 +41,8 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="DialogueText" type="RichTextLabel" parent="Root"]
+[node name="DialogueText" type="RichTextLabel" parent="Root" unique_id=99926330]
+clip_contents = false
 layout_mode = 0
 offset_left = 150.0
 offset_top = 222.0
@@ -59,12 +52,11 @@ mouse_filter = 2
 theme_override_colors/default_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_fonts/normal_font = ExtResource("3_font")
 theme_override_font_sizes/normal_font_size = 18
-clip_contents = false
 bbcode_enabled = true
 text = "Dialogue"
 scroll_active = false
 
-[node name="ChoicePanel" type="PanelContainer" parent="Root"]
+[node name="ChoicePanel" type="PanelContainer" parent="Root" unique_id=929748516]
 layout_mode = 0
 offset_left = 145.0
 offset_top = 58.0
@@ -72,13 +64,13 @@ offset_right = 495.0
 offset_bottom = 202.0
 theme_override_styles/panel = SubResource("StyleBox_choices")
 
-[node name="Margin" type="MarginContainer" parent="Root/ChoicePanel"]
+[node name="Margin" type="MarginContainer" parent="Root/ChoicePanel" unique_id=2060548174]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="Choices" type="VBoxContainer" parent="Root/ChoicePanel/Margin"]
+[node name="Choices" type="VBoxContainer" parent="Root/ChoicePanel/Margin" unique_id=246443369]
 layout_mode = 2
 theme_override_constants/separation = 4

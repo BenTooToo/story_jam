@@ -106,16 +106,42 @@ func _show_choices() -> void:
 	for index in _options.size():
 		var button := Button.new()
 		button.text = _options[index]
-		button.custom_minimum_size = Vector2(0.0, 28.0)
+		button.custom_minimum_size = Vector2(0.0, 32.0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_ALL
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.add_theme_font_override("font", PIXEL_FONT)
 		button.add_theme_font_size_override("font_size", 16)
+		button.add_theme_color_override("font_color", Color(0.68, 0.68, 0.72, 1.0))
+		button.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.78, 1.0))
+		button.add_theme_color_override("font_focus_color", Color(1.0, 0.96, 0.78, 1.0))
+		button.add_theme_color_override("font_pressed_color", Color(1.0, 0.9, 0.58, 1.0))
+		button.add_theme_stylebox_override("normal", _choice_style(Color.TRANSPARENT))
+		button.add_theme_stylebox_override("hover", _choice_style(Color.TRANSPARENT))
+		button.add_theme_stylebox_override("focus", _choice_style(Color(0.18, 0.18, 0.2, 0.839)))
+		button.add_theme_stylebox_override("pressed", _choice_style(Color(0.22, 0.21, 0.18, 0.839)))
+		button.mouse_entered.connect(button.grab_focus)
 		button.pressed.connect(_on_choice_pressed.bind(index))
 		_choice_list.add_child(button)
 
 	_choice_panel.show()
 	if _choice_list.get_child_count() > 0:
 		_choice_list.get_child(0).grab_focus()
+
+
+func _choice_style(background_color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background_color
+	style.corner_radius_top_left = 1
+	style.corner_radius_top_right = 1
+	style.corner_radius_bottom_right = 1
+	style.corner_radius_bottom_left = 1
+	style.content_margin_left = 8.0
+	style.content_margin_right = 8.0
+	style.content_margin_top = 3.0
+	style.content_margin_bottom = 3.0
+	return style
 
 
 func _on_choice_pressed(index: int) -> void:

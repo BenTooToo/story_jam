@@ -81,6 +81,19 @@ func _run_dialogue_test() -> void:
 		["女的", "男的"],
 	)
 
+	if selected == 1:
+		await Dialogue.entree(
+			Dialogue.Character.NPC0,
+			Dialogue.ExpressionState.SPEAKING,
+			"不错嘛，[rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0][shake rate=20 level=4]你还蛮聪明的[/shake][/rainbow]。",
+		)
+	else:
+		await Dialogue.entree(
+			Dialogue.Character.NPC0,
+			Dialogue.ExpressionState.SPEAKING,
+			"原来[rainbow freq=1.0 sat=0.8 val=0.8 speed=1.0][shake rate=20 level=4]傻逼是你啊[/shake][/rainbow]。",
+		)
+
 	var answer := "女的" if selected == 0 else "男的"
 	_status.text = "对话测试完成，选择：%s（可继续按 1～4）" % answer
 	_dialogue_test_running = false
