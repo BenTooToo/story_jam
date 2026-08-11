@@ -1,5 +1,7 @@
 extends Node2D
 
+signal anchor_finished
+
 const SCREEN_CENTER := Vector2(320, 180)
 const REVERB_BUS := "StartReverb"
 
@@ -82,6 +84,7 @@ func _run_intro() -> void:
 	# 门到位：哐当
 	_sfx_door_move.stop()
 	_sfx_clank.play()
+	anchor_finished.emit()
 
 
 # 建一个只给本场景音效用的回声总线，不动 Master

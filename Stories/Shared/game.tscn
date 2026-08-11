@@ -1,3 +1,36 @@
-[gd_scene format=3 uid="uid://bcll3kva0ja7v"]
+[gd_scene load_steps=3 format=3 uid="uid://bcll3kva0ja7v"]
+
+[ext_resource type="Script" path="res://Stories/Shared/game.gd" id="1_game"]
+[ext_resource type="FontFile" path="res://Assets/Theme/像素字体.ttf" id="2_font"]
 
 [node name="Game" type="Node2D" unique_id=1984428139]
+script = ExtResource("1_game")
+
+[node name="AnchorHost" type="Node2D" parent="."]
+
+[node name="TestUI" type="CanvasLayer" parent="."]
+layer = 90
+
+[node name="Help" type="Label" parent="TestUI"]
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 632.0
+offset_bottom = 31.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 15
+text = "[1] 开场锚点   [2] 中间锚点   [3] 结尾锚点   [4] 开场 + 对话测试"
+
+[node name="Status" type="Label" parent="TestUI"]
+offset_left = 8.0
+offset_top = 32.0
+offset_right = 632.0
+offset_bottom = 57.0
+theme_override_colors/font_color = Color(0.82, 0.9, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 14
+text = "请选择测试内容"
