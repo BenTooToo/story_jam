@@ -1,5 +1,11 @@
 # Story Jam 对话系统使用手册
 
+## 镜头控制函数
+
+- `follow_camera(target: Node2D, zoom_amount: float = 1.35, offset: Vector2 = Vector2(0, -30)) -> void`：设置持续跟随对象；镜头会在每一帧更新位置和缩放。
+- `move_camera(target_position: Vector2, zoom_amount: float = 1.0, duration: float = 0.5) -> Tween`：将镜头平滑移动到指定世界坐标，同时调整缩放；新的镜头移动会终止尚未完成的旧移动。
+- `reset_camera(duration: float = 0.5) -> Tween`：退出跟随模式，将镜头平滑恢复到屏幕中心 `(320, 180)` 和默认缩放 `1.0`。
+
 本目录保存项目的全局对话系统。对话系统已经在 `project.godot` 中注册为
 Autoload，名称为 `Dialogue`，因此任意场景脚本都可以直接调用：
 
@@ -27,9 +33,6 @@ Stories/Shared/Dialogue/
 ├── dialogue_box.gd      # 逐字显示、输入、头像和选项逻辑
 └── README.md            # 本手册
 ```
-
-`Assets/ROMART` 是只读美术素材目录。对话系统只引用其中的对话框和头像图片，
-不要在对话脚本中修改这些源文件。
 
 ## 最小调用示例
 
@@ -145,8 +148,8 @@ Dialogue.ExpressionState.SPEAKING  # 数值 1，说话头像
 
 | 角色 | `NORMAL` | `SPEAKING` |
 | --- | --- | --- |
-| NPC0 | `Assets/ROMART/npc0.png` | `Assets/ROMART/npc0说话.png` |
-| NPC1 | `Assets/ROMART/npc1.png` | `Assets/ROMART/npc1说话.png` |
+| NPC0 | `Assets/ROMART/npc0.png` | 闭嘴/说话头像循环 |
+| NPC1 | `Assets/ROMART/npc1.png` | 闭嘴/说话头像循环 |
 
 以后增加生气、悲伤、害怕等头像时，可以扩展 `ExpressionState` 和头像映射，
 不需要修改 `entree()` 的函数参数。
@@ -189,17 +192,17 @@ BBCode 的基本写法：
 
 | 效果 | 格式 | 示例 |
 | --- | --- | --- |
-| 粗体 | `[b]文字[/b]` | `[b]不要开门[/b]` |
-| 斜体 | `[i]文字[/i]` | `[i]也许只是错觉[/i]` |
-| 下划线 | `[u]文字[/u]` | `[u]十六层[/u]` |
-| 删除线 | `[s]文字[/s]` | `[s]一楼[/s]` |
+| 粗体 | `[b]文字[/b]` |
+| 斜体 | `[i]文字[/i]` |
+| 下划线 | `[u]文字[/u]` |
+| 删除线 | `[s]文字[/s]` |
 | 文字颜色 | `[color=颜色]文字[/color]` | `[color=#ff4040]危险[/color]` |
 | 背景颜色 | `[bgcolor=颜色]文字[/bgcolor]` | `[bgcolor=#803030]警告[/bgcolor]` |
 | 字号 | `[font_size=大小]文字[/font_size]` | `[font_size=24]停下！[/font_size]` |
 | 描边大小 | `[outline_size=大小]文字[/outline_size]` | `[outline_size=2]门[/outline_size]` |
 | 描边颜色 | `[outline_color=颜色]文字[/outline_color]` | `[outline_color=black]门[/outline_color]` |
 | 换行 | `[br]` | `第一行[br]第二行` |
-| 居中 | `[center]文字[/center]` | `[center]第十六层[/center]` |
+| 居中 | `[center]文字[/center]` |
 
 颜色可以使用名称或十六进制：
 
@@ -213,18 +216,6 @@ BBCode 的基本写法：
 
 ```text
 [b][color=#ff4040]危险[/color][/b]
-```
-
-必须按照与开始标签相反的顺序关闭：
-
-```text
-[b][color=red]正确[/color][/b]
-```
-
-不要交叉关闭：
-
-```text
-[b][color=red]错误[/b][/color]
 ```
 
 ## Godot 自带的六种动态文字效果

@@ -6,6 +6,7 @@ extends Node
 ## option index, or -1 when the entry has no options.
 
 signal became_available
+signal choice_focused(choice_index: int)
 
 enum Character {
 	NPC0,
@@ -27,6 +28,11 @@ var _busy := false
 func _ready() -> void:
 	_dialogue_box = DIALOGUE_BOX_SCENE.instantiate()
 	add_child(_dialogue_box)
+	_dialogue_box.choice_focused.connect(_on_choice_focused)
+
+
+func _on_choice_focused(choice_index: int) -> void:
+	choice_focused.emit(choice_index)
 
 
 func entree(

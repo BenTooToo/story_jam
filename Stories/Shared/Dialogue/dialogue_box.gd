@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 signal entry_completed(choice_index: int)
+signal choice_focused(choice_index: int)
 
 const NPC0_NORMAL := preload("res://Assets/ROMART/npc0.png")
 const NPC0_SPEAKING := preload("res://Assets/ROMART/npc0说话.png")
@@ -36,6 +37,7 @@ var _portrait_closed: Texture2D
 var _portrait_open: Texture2D
 var _talking_visuals_enabled := false
 var _mouth_open := false
+var _advance_action_held := false
 
 
 func _ready() -> void:
@@ -67,10 +69,19 @@ func show_entry(
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.echo:
+		return
+	if event.is_action_released("ui_accept"):
+		_advance_action_held = false
+		return
 	if not _active:
 		return
 
 	var advance_pressed := event.is_action_pressed("ui_accept")
+	if advance_pressed:
+		if _advance_action_held:
+			return
+		_advance_action_held = true
 	if event is InputEventMouseButton:
 		advance_pressed = advance_pressed or (
 			event.button_index == MOUSE_BUTTON_LEFT and event.pressed
@@ -103,6 +114,8 @@ func _type_text(generation: int) -> void:
 		and _active
 	):
 		await get_tree().create_timer(character_delay).timeout
+		if generation != _generation or not _active or not _typing:
+			return
 		_dialogue_text.visible_characters += 1
 
 	if generation == _generation and _active:
@@ -167,6 +180,7 @@ func _show_choices() -> void:
 		button.add_theme_stylebox_override("focus", _choice_style(Color(0.18, 0.18, 0.2, 0.839)))
 		button.add_theme_stylebox_override("pressed", _choice_style(Color(0.22, 0.21, 0.18, 0.839)))
 		button.mouse_entered.connect(button.grab_focus)
+		button.focus_entered.connect(_on_choice_focused.bind(index))
 		button.pressed.connect(_on_choice_pressed.bind(index))
 		_choice_list.add_child(button)
 
@@ -193,6 +207,12 @@ func _on_choice_pressed(index: int) -> void:
 	if not _active or _typing:
 		return
 	_finish_entry(index)
+
+
+func _on_choice_focused(index: int) -> void:
+	if not _active or _typing:
+		return
+	choice_focused.emit(index)
 
 
 func _finish_entry(choice_index: int) -> void:

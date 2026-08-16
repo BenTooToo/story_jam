@@ -6,6 +6,10 @@
 [node name="Game" type="Node2D" unique_id=1984428139]
 script = ExtResource("1_game")
 
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(320, 180)
+enabled = true
+
 [node name="AnchorHost" type="Node2D" parent="."]
 
 [node name="TestUI" type="CanvasLayer" parent="."]

@@ -56,9 +56,6 @@ bbcode_enabled = true
 text = "Dialogue"
 scroll_active = false
 
-[node name="TalkSound" type="AudioStreamPlayer" parent="." unique_id=178398251]
-volume_db = -6.0
-
 [node name="ChoicePanel" type="PanelContainer" parent="Root" unique_id=929748516]
 layout_mode = 0
 offset_left = 145.0
@@ -77,3 +74,6 @@ theme_override_constants/margin_bottom = 6
 [node name="Choices" type="VBoxContainer" parent="Root/ChoicePanel/Margin" unique_id=246443369]
 layout_mode = 2
 theme_override_constants/separation = 4
+
+[node name="TalkSound" type="AudioStreamPlayer" parent="." unique_id=178398251]
+volume_db = -6.0
