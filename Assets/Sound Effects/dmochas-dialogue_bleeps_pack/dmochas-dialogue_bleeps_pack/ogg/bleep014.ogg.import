@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://c6d4o8ykc47t2"
+path="res://.godot/imported/bleep014.ogg-4191edec9e41d568ea19afd9a144ee4c.oggvorbisstr"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/dmochas-dialogue_bleeps_pack/dmochas-dialogue_bleeps_pack/ogg/bleep014.ogg"
+dest_files=["res://.godot/imported/bleep014.ogg-4191edec9e41d568ea19afd9a144ee4c.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://cfqcoi0wrh0gr"
+path="res://.godot/imported/女生_5.wav-420daea599888d38540a6ab6ce1f9dff.sample"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/女生_5.wav"
+dest_files=["res://.godot/imported/女生_5.wav-420daea599888d38540a6ab6ce1f9dff.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

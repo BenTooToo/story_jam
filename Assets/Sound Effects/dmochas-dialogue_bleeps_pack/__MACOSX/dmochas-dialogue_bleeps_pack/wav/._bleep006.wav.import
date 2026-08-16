@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://l0lsti4srr1"
+path="res://.godot/imported/._bleep006.wav-57a2ea30d509ef7442f1c0ec9d6f2923.sample"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/dmochas-dialogue_bleeps_pack/__MACOSX/dmochas-dialogue_bleeps_pack/wav/._bleep006.wav"
+dest_files=["res://.godot/imported/._bleep006.wav-57a2ea30d509ef7442f1c0ec9d6f2923.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

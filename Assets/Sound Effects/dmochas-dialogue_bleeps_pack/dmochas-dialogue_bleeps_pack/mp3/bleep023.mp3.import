@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dvdm5ow0gjybe"
+path="res://.godot/imported/bleep023.mp3-7b58eb05093ba9535537bb040a2a47fa.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/dmochas-dialogue_bleeps_pack/dmochas-dialogue_bleeps_pack/mp3/bleep023.mp3"
+dest_files=["res://.godot/imported/bleep023.mp3-7b58eb05093ba9535537bb040a2a47fa.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

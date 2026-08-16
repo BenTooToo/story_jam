@@ -6,20 +6,36 @@ const NPC0_NORMAL := preload("res://Assets/ROMART/npc0.png")
 const NPC0_SPEAKING := preload("res://Assets/ROMART/npc0说话.png")
 const NPC1_NORMAL := preload("res://Assets/ROMART/npc1.png")
 const NPC1_SPEAKING := preload("res://Assets/ROMART/npc1说话.png")
+const NPC0_TALK_SOUND := preload("res://Assets/Sound Effects/女生_5.wav")
+const NPC1_TALK_SOUND := preload("res://Assets/Sound Effects/男生_11.wav")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
+const TALK_DIRECTIONS: Array[Vector2] = [
+	Vector2.LEFT,
+	Vector2.RIGHT,
+	Vector2.UP,
+	Vector2.DOWN,
+]
 
-@export_range(0.001, 0.2, 0.001) var character_delay := 0.035
+@export_range(0.001, 0.2, 0.001) var character_delay := 0.06
+@export_range(0.02, 0.3, 0.01) var talk_frame_delay := 0.08
+@export_range(0.0, 4.0, 1.0) var talk_move_distance := 2.0
 
 @onready var _root: Control = $Root
 @onready var _portrait: TextureRect = $Root/Portrait
 @onready var _dialogue_text: RichTextLabel = $Root/DialogueText
 @onready var _choice_panel: PanelContainer = $Root/ChoicePanel
 @onready var _choice_list: VBoxContainer = $Root/ChoicePanel/Margin/Choices
+@onready var _talk_sound: AudioStreamPlayer = $TalkSound
 
 var _active := false
 var _typing := false
 var _generation := 0
 var _options: Array[String] = []
+var _portrait_home := Vector2.ZERO
+var _portrait_closed: Texture2D
+var _portrait_open: Texture2D
+var _talking_visuals_enabled := false
+var _mouth_open := false
 
 
 func _ready() -> void:
@@ -45,6 +61,7 @@ func show_entry(
 	_root.show()
 
 	_type_text(_generation)
+	_run_talking_visuals(_generation)
 	var selected_option: int = await entry_completed
 	return selected_option
 
@@ -92,11 +109,39 @@ func _type_text(generation: int) -> void:
 		_finish_typing()
 
 
+func _run_talking_visuals(generation: int) -> void:
+	if not _talking_visuals_enabled:
+		return
+
+	while _typing and generation == _generation and _active:
+		_mouth_open = not _mouth_open
+		_portrait.texture = _portrait_open if _mouth_open else _portrait_closed
+		var direction: Vector2 = TALK_DIRECTIONS.pick_random()
+		_portrait.position = _portrait_home + direction * talk_move_distance
+		if _mouth_open:
+			_play_talk_sound()
+		await get_tree().create_timer(talk_frame_delay).timeout
+
+
+func _play_talk_sound() -> void:
+	if _talk_sound.stream != null:
+		_talk_sound.play()
+
+
+func _reset_talking_visuals() -> void:
+	_mouth_open = false
+	_talk_sound.stop()
+	if _portrait_closed != null:
+		_portrait.texture = _portrait_closed
+	_portrait.position = _portrait_home
+
+
 func _finish_typing() -> void:
 	if not _typing:
 		return
 	_typing = false
 	_generation += 1
+	_reset_talking_visuals()
 	_dialogue_text.visible_characters = -1
 	if not _options.is_empty():
 		_show_choices()
@@ -153,6 +198,7 @@ func _on_choice_pressed(index: int) -> void:
 func _finish_entry(choice_index: int) -> void:
 	_active = false
 	_generation += 1
+	_reset_talking_visuals()
 	_root.hide()
 	_clear_choices()
 	entry_completed.emit(choice_index)
@@ -167,26 +213,28 @@ func _clear_choices() -> void:
 
 func _update_portrait(character_id: int, expression_id: int) -> void:
 	_portrait.show()
+	_talking_visuals_enabled = expression_id == Dialogue.ExpressionState.SPEAKING
 	match character_id:
 		Dialogue.Character.NPC0:
-			_portrait.position = Vector2(22.0, 210.0)
-			_portrait.texture = (
-				NPC0_NORMAL
-				if expression_id == Dialogue.ExpressionState.NORMAL
-				else NPC0_SPEAKING
-			)
+			_portrait_home = Vector2(22.0, 210.0)
+			_portrait_closed = NPC0_NORMAL
+			_portrait_open = NPC0_SPEAKING
+			_talk_sound.stream = NPC0_TALK_SOUND
 			_set_text_rect(150.0, 222.0, 445.0, 104.0)
 		Dialogue.Character.NPC1:
-			_portrait.position = Vector2(490.0, 210.0)
-			_portrait.texture = (
-				NPC1_NORMAL
-				if expression_id == Dialogue.ExpressionState.NORMAL
-				else NPC1_SPEAKING
-			)
+			_portrait_home = Vector2(490.0, 210.0)
+			_portrait_closed = NPC1_NORMAL
+			_portrait_open = NPC1_SPEAKING
+			_talk_sound.stream = NPC1_TALK_SOUND
 			_set_text_rect(42.0, 222.0, 438.0, 104.0)
 		_:
+			_talking_visuals_enabled = false
+			_portrait_closed = null
+			_portrait_open = null
+			_talk_sound.stream = null
 			_portrait.hide()
 			_set_text_rect(42.0, 222.0, 554.0, 104.0)
+	_reset_talking_visuals()
 
 
 func _set_text_rect(x: float, y: float, width: float, height: float) -> void:

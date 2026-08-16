@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bqblvn4x4g2dd"
+path="res://.godot/imported/男生_11.wav-b4cdf385207e7d06dbcb50aecaa1d56c.sample"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/男生_11.wav"
+dest_files=["res://.godot/imported/男生_11.wav-b4cdf385207e7d06dbcb50aecaa1d56c.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

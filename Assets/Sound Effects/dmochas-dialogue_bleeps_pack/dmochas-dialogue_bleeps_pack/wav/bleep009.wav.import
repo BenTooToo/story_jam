@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://nyqg0aafta23"
+path="res://.godot/imported/bleep009.wav-e73c42a256cdc1c3909eb8c6092e907d.sample"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/dmochas-dialogue_bleeps_pack/dmochas-dialogue_bleeps_pack/wav/bleep009.wav"
+dest_files=["res://.godot/imported/bleep009.wav-e73c42a256cdc1c3909eb8c6092e907d.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

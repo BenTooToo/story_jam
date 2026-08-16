@@ -56,6 +56,9 @@ bbcode_enabled = true
 text = "Dialogue"
 scroll_active = false
 
+[node name="TalkSound" type="AudioStreamPlayer" parent="." unique_id=178398251]
+volume_db = -6.0
+
 [node name="ChoicePanel" type="PanelContainer" parent="Root" unique_id=929748516]
 layout_mode = 0
 offset_left = 145.0
