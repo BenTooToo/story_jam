@@ -12,6 +12,7 @@
 [ext_resource type="AudioStream" uid="uid://cqxfeshujoeta" path="res://Assets/Sound Effects/电梯门移动.mp3" id="8_doors"]
 [ext_resource type="AudioStream" uid="uid://trf00tqj0q2m" path="res://Assets/Sound Effects/哐当.mp3" id="9_clank"]
 [ext_resource type="Shader" uid="uid://diw4b5iye7y1" path="res://Assets/Theme/light_shafts.gdshader" id="10_shafts"]
+[ext_resource type="Texture2D" uid="uid://h8427vcpx14g" path="res://Assets/ROMART/npc0说话.png" id="13_osgqv"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5wckm"]
 atlas = ExtResource("2_xvhka")
@@ -44,7 +45,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_1ogsl")
 }],
-"loop": true,
+"loop": 1,
 "name": &"default",
 "speed": 6.0
 }]
@@ -80,7 +81,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_osgqv")
 }],
-"loop": true,
+"loop": 1,
 "name": &"default",
 "speed": 5.0
 }]
@@ -239,3 +240,7 @@ volume_db = -6.0
 
 [node name="SfxClank" type="AudioStreamPlayer" parent="." unique_id=68543835]
 stream = ExtResource("9_clank")
+
+[node name="Npc0说话" type="Sprite2D" parent="." unique_id=1171755917]
+position = Vector2(109, 201)
+texture = ExtResource("13_osgqv")
