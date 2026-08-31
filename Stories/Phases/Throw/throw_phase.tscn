@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Stories/Phases/Throw/throw_phase.gd" id="1_throw"]
+
+[node name="ThrowPhase" type="Node2D"]
+script = ExtResource("1_throw")
