@@ -16,12 +16,8 @@ var lane_pose := [
 	CharSprite.Pose.DANCE_UP,
 	CharSprite.Pose.DANCE_RIGHT,
 ]
+## 素材只需要一个朝上的箭头，四个方向靠旋转
 var arrow_rot := [-PI / 2.0, PI, 0.0, PI / 2.0]
-var arrow_poly := PackedVector2Array([
-	Vector2(0, -11), Vector2(9, -1), Vector2(4, -1), Vector2(4, 10),
-	Vector2(-4, 10), Vector2(-4, -1), Vector2(-9, -1),
-])
-var arrow_outline := PackedVector2Array()
 
 var _chart := []               # {time, lane}
 var _sides := []               # 每边一份状态字典
@@ -33,8 +29,6 @@ var _end_time := 0.0
 
 func _ready() -> void:
 	draw_obstacle_blocks = false
-	arrow_outline = arrow_poly.duplicate()
-	arrow_outline.append(arrow_poly[0])
 	_chart = _build_chart()
 	_build_stage()
 	_sides = [_make_side(0), _make_side(1)]
@@ -211,19 +205,24 @@ func _finish() -> void:
 
 func _draw_front() -> void:
 	for side in _sides:
+		# 判定线上的空心箭头
 		for lane in 4:
-			var x: float = side.xs[lane]
-			draw_set_transform(Vector2(x, RECEPTOR_Y), arrow_rot[lane], Vector2.ONE)
-			draw_polyline(arrow_outline, Color(0.55, 0.55, 0.6), 2.0, true)
+			var at := Vector2(float(side.xs[lane]), RECEPTOR_Y)
+			Art.draw_sprite(self, "箭头", at, 22.0, arrow_rot[lane], Color(0.5, 0.5, 0.55))
 			if side.flash[lane] > 0.0:
-				draw_colored_polygon(arrow_poly, Color(1, 1, 1, minf(side.flash[lane] * 3.0, 0.9)))
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				Art.draw_sprite(
+					self, "箭头", at, 22.0, arrow_rot[lane],
+					Color(1, 1, 1, minf(side.flash[lane] * 3.0, 0.9)),
+				)
+		# 往上滚的音符
 		for n in side.notes:
 			if n.judged:
 				continue
 			var y := RECEPTOR_Y + (float(n.time) - _elapsed) * SCROLL_SPEED
 			if y > NOTE_SPAWN_Y or y < 34.0:
 				continue
-			draw_set_transform(Vector2(float(side.xs[int(n.lane)]), y), arrow_rot[int(n.lane)], Vector2.ONE)
-			draw_colored_polygon(arrow_poly, side.note_color)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			Art.draw_sprite(
+				self, "箭头",
+				Vector2(float(side.xs[int(n.lane)]), y), 22.0,
+				arrow_rot[int(n.lane)], side.note_color,
+			)

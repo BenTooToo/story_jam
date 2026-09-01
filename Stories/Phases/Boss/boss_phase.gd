@@ -3,7 +3,8 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 ## 两人合力投掷打怪：怪兽会震地放冲击波（跳起躲开）、朝人丢齿轮（看落点预警）。
 ## 打倒怪兽后进入和解——本阶段没有对抗计分，只记每人的输出。
 
-const BOSS_TEX := preload("res://Assets/Edited/电梯箱.png")
+## 怪兽本体等 高艺晨 的 电梯怪兽.png；没到货之前先拿电梯箱压暗顶着。
+const BOSS_FALLBACK_TEX := preload("res://Assets/Edited/电梯箱.png")
 const BOSS_TINT := Color(0.58, 0.56, 0.62)
 
 @export var boss_hp_max := 60
@@ -16,6 +17,7 @@ var markers := []              # 落点预警 {x, t}
 
 var _boss_rect := Rect2()
 var _boss_sprite: Sprite2D
+var _boss_base_tint := Color.WHITE
 var _boss_flash := 0.0
 var _attack_timer := 2.5
 var _attack_kind := 0
@@ -32,18 +34,21 @@ func _ready() -> void:
 
 
 func _build_boss() -> void:
+	var tex: Texture2D = Art.tex("怪兽")
 	var w := 148.0
-	var s := w / float(BOSS_TEX.get_width())
-	var h := BOSS_TEX.get_height() * s
+	var s := w / float((tex if tex != null else BOSS_FALLBACK_TEX).get_width())
+	var h := (tex if tex != null else BOSS_FALLBACK_TEX).get_height() * s
 	_boss_rect = Rect2(320.0 - w * 0.5, GROUND_Y + 2.0 - h, w, h)
 	obstacles.append(_boss_rect)
 	_boss_sprite = Sprite2D.new()
-	_boss_sprite.texture = BOSS_TEX
+	_boss_sprite.texture = tex if tex != null else BOSS_FALLBACK_TEX
 	_boss_sprite.scale = Vector2.ONE * s
 	_boss_sprite.position = Vector2(320.0, GROUND_Y + 2.0 - h * 0.5)
-	_boss_sprite.modulate = BOSS_TINT
+	# 拿电梯箱顶替时压暗一点，跟阶段二的普通电梯区分开
+	_boss_base_tint = Color.WHITE if tex != null else BOSS_TINT
+	_boss_sprite.modulate = _boss_base_tint
 	add_child(_boss_sprite)
-	# 脸和血条画在精灵上层
+	# 血条和落点预警画在怪兽精灵上层
 	var overlay := CanvasProxy.new()
 	overlay.host = self
 	overlay.z_index = 20
@@ -71,7 +76,7 @@ func _intro() -> void:
 func phase_tick(delta: float) -> void:
 	_boss_flash = maxf(_boss_flash - delta, 0.0)
 	if _boss_sprite != null and boss_alive:
-		_boss_sprite.modulate = Color.WHITE if _boss_flash > 0.0 else BOSS_TINT
+		_boss_sprite.modulate = Color(1.6, 1.6, 1.6) if _boss_flash > 0.0 else _boss_base_tint
 	if not running:
 		return
 	if boss_alive:
@@ -198,63 +203,20 @@ func _die() -> void:
 # ---------- 绘制 ----------
 
 func _draw_front() -> void:
-	# 地面冲击波
 	for w in waves:
-		var x := float(w.x)
-		draw_circle(Vector2(x, GROUND_Y + 1.0), 8.0, Color(0.8, 0.7, 0.5, 0.8))
-		draw_arc(Vector2(x, GROUND_Y + 1.0), 12.0, PI, TAU, 10, Color(0.9, 0.85, 0.6), 2.0, true)
-	# 怪兽投掷物：带齿的圆
+		Art.draw_sprite(self, "冲击波", Vector2(float(w.x), GROUND_Y - 6.0), 18.0)
 	for bp in boss_projs:
-		var pos: Vector2 = bp.pos
-		draw_circle(pos, 6.0, Color(0.4, 0.4, 0.45))
-		for k in 4:
-			var a := _t * 6.0 + k * TAU / 4.0
-			draw_line(pos, pos + Vector2(cos(a), sin(a)) * 9.0, Color(0.55, 0.55, 0.6), 2.0, true)
+		Art.draw_sprite(self, "齿轮", bp.pos, 14.0, _t * 6.0)
 
 
-## CanvasProxy 转发来的上层绘制：血条、预警、怪兽的脸和手臂。
+## CanvasProxy 转发来的上层绘制：血条和落点预警（怪兽的表情动作等素材）。
 func _proxy_draw(cv: Node2D, _tag: String) -> void:
-	# 血条
+	# 血条是 UI，先用纯色条顶着
 	cv.draw_rect(Rect2(170, 60, 300, 10), Color(0.1, 0.1, 0.12))
 	var ratio := float(boss_hp) / float(boss_hp_max)
 	cv.draw_rect(Rect2(171, 61, 298.0 * ratio, 8), Color(0.85, 0.25, 0.25))
 	cv.draw_rect(Rect2(170, 60, 300, 10), Color(0.7, 0.7, 0.75), false, 1.5)
-	# 落点预警（闪烁的红叉）
+	# 落点预警：闪烁提示玩家躲开
 	for m in markers:
 		if fmod(float(m.t) * 6.0, 1.0) < 0.6:
-			var mx := float(m.x)
-			var my := GROUND_Y - 3.0
-			cv.draw_line(Vector2(mx - 6, my - 6), Vector2(mx + 6, my + 6), Color(0.95, 0.35, 0.3), 2.0, true)
-			cv.draw_line(Vector2(mx - 6, my + 6), Vector2(mx + 6, my - 6), Color(0.95, 0.35, 0.3), 2.0, true)
-	if not boss_alive:
-		return
-	# 怒目、锯齿嘴、挥舞的手臂（都按箱体尺寸等比摆放）
-	var cx := _boss_rect.get_center().x
-	var top := _boss_rect.position.y
-	var w := _boss_rect.size.x
-	var h := _boss_rect.size.y
-	var white := Color(0.95, 0.95, 0.9)
-	var wob := sin(_t * 6.0) * 7.0
-	var eye_y := top + h * 0.20
-	cv.draw_line(Vector2(cx - w * 0.24, eye_y), Vector2(cx - w * 0.09, eye_y + h * 0.05), white, 3.0, true)
-	cv.draw_line(Vector2(cx + w * 0.24, eye_y), Vector2(cx + w * 0.09, eye_y + h * 0.05), white, 3.0, true)
-	var mouth := PackedVector2Array()
-	var mouth_y := top + h * 0.34
-	for k in 9:
-		var tooth := h * 0.022
-		mouth.append(Vector2(
-			cx - w * 0.26 + k * (w * 0.065),
-			mouth_y + (tooth if k % 2 == 0 else -tooth),
-		))
-	cv.draw_polyline(mouth, white, 2.5, true)
-	var arm_y := top + h * 0.30
-	cv.draw_line(
-		Vector2(_boss_rect.position.x, arm_y),
-		Vector2(_boss_rect.position.x - 26.0, top + h * 0.06 - wob),
-		white, 3.5, true,
-	)
-	cv.draw_line(
-		Vector2(_boss_rect.end.x, arm_y),
-		Vector2(_boss_rect.end.x + 26.0, top + h * 0.06 + wob),
-		white, 3.5, true,
-	)
+			Art.draw_sprite(cv, "落点预警", Vector2(float(m.x), GROUND_Y - 5.0), 14.0)

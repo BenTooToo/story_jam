@@ -6,6 +6,7 @@ extends Node2D
 signal phase_finished(result: Dictionary)
 
 const CharSprite := preload("res://Stories/Phases/Shared/character_sprite.gd")
+const Art := preload("res://Stories/Phases/Shared/phase_art.gd")
 const Sfx := preload("res://Stories/Phases/Shared/retro_sfx.gd")
 const CanvasProxy := preload("res://Stories/Phases/Shared/canvas_proxy.gd")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
@@ -41,6 +42,9 @@ class PlayerState:
 	var keys := {}
 
 
+## 打开后在左上角列出还没到货的素材，方便对着清单催素材
+@export var show_missing_art := false
+
 var players := []
 var projectiles := []          # {pos, vel, from, kind, rot, spin}
 var pops := []                 # 命中 / 消失时的小圆圈特效 {pos, t}
@@ -54,6 +58,20 @@ var _shake_time := 0.0
 var _shake_amp := 0.0
 var _rng := RandomNumberGenerator.new()
 var _hud: CanvasLayer
+
+
+func _enter_tree() -> void:
+	# 子类各自实现 _ready，这里用延后调用挂缺素材清单，省得三个阶段各写一遍
+	call_deferred("_setup_missing_art_hud")
+
+
+func _setup_missing_art_hud() -> void:
+	if not show_missing_art:
+		return
+	make_hud_label(
+		Art.missing_report(), 6, 4, 628, 10,
+		Color(0.95, 0.75, 0.4), HORIZONTAL_ALIGNMENT_LEFT,
+	)
 
 
 func _process(delta: float) -> void:
@@ -326,30 +344,17 @@ func _draw() -> void:
 	draw_line(Vector2(0, GROUND_Y + 3.0), Vector2(640, GROUND_Y + 3.0), Color(0.85, 0.82, 0.72), 4.0, true)
 	if draw_obstacle_blocks:
 		for r in obstacles:
-			draw_rect(r, Color(0.13, 0.12, 0.16))
-			draw_rect(r, Color(0.5, 0.48, 0.55), false, 2.0)
+			Art.draw_in_rect(self, "隔断", r)
 	_draw_projectiles()
 	for pop in pops:
 		var k: float = pop.t / 0.3
-		draw_arc(pop.pos, 4.0 + k * 12.0, 0.0, TAU, 12, Color(1, 1, 1, 1.0 - k), 2.0, true)
+		Art.draw_sprite(
+			self, "命中特效", pop.pos, 12.0 + k * 20.0, 0.0,
+			Color(1, 1, 1, 1.0 - k),
+		)
 	_draw_front()
 
 
 func _draw_projectiles() -> void:
 	for pr in projectiles:
-		var pos: Vector2 = pr.pos
-		match int(pr.kind):
-			0:
-				draw_circle(pos, 5.0, Color(0.95, 0.8, 0.3))
-				draw_arc(pos, 5.0, 0.0, TAU, 12, Color(0.4, 0.3, 0.1), 1.5, true)
-			1:
-				draw_set_transform(pos, pr.rot, Vector2.ONE)
-				draw_rect(Rect2(-4.5, -4.5, 9.0, 9.0), Color(0.55, 0.8, 0.9))
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			2:
-				draw_set_transform(pos, pr.rot, Vector2.ONE)
-				draw_colored_polygon(
-					PackedVector2Array([Vector2(0, -6), Vector2(5.5, 4), Vector2(-5.5, 4)]),
-					Color(0.95, 0.55, 0.3),
-				)
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		Art.draw_sprite(self, "投掷物%d" % (int(pr.kind) + 1), pr.pos, 12.0, pr.rot)

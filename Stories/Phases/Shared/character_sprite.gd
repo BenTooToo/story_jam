@@ -22,6 +22,7 @@ enum Pose {
 	CHEER,
 }
 
+const Art := preload("res://Stories/Phases/Shared/phase_art.gd")
 const SHEET := preload("res://Assets/Branch/dance.png")
 const FRAME_SIZE := 256.0
 const FOOT_Y := 253.0                                # 素材里脚底所在的行
@@ -150,17 +151,11 @@ func _refresh() -> void:
 	_body.position = Vector2(-pivot * s * face, -FOOT_Y * s + lift)
 
 
+## 头顶转圈的眩晕提示
 func _draw() -> void:
 	if pose != Pose.STUNNED:
 		return
 	var head_y := -body_height() - 8.0
 	for k in 3:
 		var a := _time * 4.0 + k * TAU / 3.0
-		_star(Vector2(cos(a) * 13.0, head_y + sin(a) * 3.0), 3.0, Color(1.0, 0.85, 0.3))
-
-
-func _star(at: Vector2, r: float, c: Color) -> void:
-	draw_line(at + Vector2(-r, 0), at + Vector2(r, 0), c, 1.6, true)
-	draw_line(at + Vector2(0, -r), at + Vector2(0, r), c, 1.6, true)
-	draw_line(at + Vector2(-r, -r) * 0.7, at + Vector2(r, r) * 0.7, c, 1.3, true)
-	draw_line(at + Vector2(-r, r) * 0.7, at + Vector2(r, -r) * 0.7, c, 1.3, true)
+		Art.draw_sprite(self, "眩晕星星", Vector2(cos(a) * 13.0, head_y + sin(a) * 3.0), 7.0)

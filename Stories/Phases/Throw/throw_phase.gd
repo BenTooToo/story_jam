@@ -158,21 +158,13 @@ func _finish() -> void:
 
 func _draw_front() -> void:
 	for it in items:
+		# 快消失前闪烁提示
 		var alpha := 1.0
 		if it.rest > 2.0:
 			alpha = 0.4 if fmod(float(it.rest), 0.3) < 0.15 else 1.0
-		var pos: Vector2 = it.pos
-		match int(it.tier):
-			1:
-				draw_circle(pos, 4.0, Color(0.9, 0.9, 0.95, alpha))
-			3:
-				draw_set_transform(pos, _t * 2.0, Vector2.ONE)
-				draw_rect(Rect2(-5, -5, 10, 10), Color(0.5, 0.85, 0.9, alpha))
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			5:
-				var pts := PackedVector2Array()
-				for k in 10:
-					var ang := -PI / 2.0 + k * PI / 5.0
-					var rr := 8.0 if k % 2 == 0 else 3.6
-					pts.append(pos + Vector2(cos(ang), sin(ang)) * rr)
-				draw_colored_polygon(pts, Color(1.0, 0.84, 0.25, alpha))
+		# 分值越高的素材画得越大，方便一眼看出该抢哪个
+		var height := 11.0 + int(it.tier) * 1.6
+		Art.draw_sprite(
+			self, "掉落%d分" % int(it.tier), it.pos, height, 0.0,
+			Color(1, 1, 1, alpha),
+		)
