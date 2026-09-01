@@ -5,7 +5,7 @@ extends Node2D
 
 signal phase_finished(result: Dictionary)
 
-const StickFigure := preload("res://Stories/Phases/Shared/stick_figure.gd")
+const CharSprite := preload("res://Stories/Phases/Shared/character_sprite.gd")
 const Sfx := preload("res://Stories/Phases/Shared/retro_sfx.gd")
 const CanvasProxy := preload("res://Stories/Phases/Shared/canvas_proxy.gd")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
@@ -21,8 +21,12 @@ const MOVE_SPEED := 155.0
 const JUMP_VELOCITY := -330.0
 const STUN_TIME := 2.0
 const THROW_COOLDOWN := 0.65
-const P1_COLOR := Color(0.38, 0.58, 0.9)
-const P2_COLOR := Color(0.9, 0.45, 0.78)
+const CHAR_HALF_W := 11.0
+const CHAR_H := 82.0
+const SHOULDER_Y := -62.0
+## 强调色取自两人的衣服，用在计分板和飘字上
+const P1_COLOR := Color(0.58, 0.65, 0.88)   # NPC0：深蓝毛衣
+const P2_COLOR := Color(0.85, 0.62, 0.28)   # NPC1：赭色衬衫
 
 
 class PlayerState:
@@ -95,11 +99,12 @@ func _draw_front() -> void:
 
 # ---------- 玩家 ----------
 
+## P1 在左边（NPC0），P2 在右边（NPC1）——和对话框里的头像左右一致。
 func setup_players(x1: float, x2: float) -> void:
 	var defs := [
-		{id = 1, x = x1, color = P1_COLOR, facing = 1,
+		{id = 1, x = x1, character = 0, color = P1_COLOR, facing = 1,
 			keys = {left = KEY_A, right = KEY_D, jump = KEY_W, throw = KEY_F}},
-		{id = 2, x = x2, color = P2_COLOR, facing = -1,
+		{id = 2, x = x2, character = 1, color = P2_COLOR, facing = -1,
 			keys = {left = KEY_LEFT, right = KEY_RIGHT, jump = KEY_UP, throw = KEY_SLASH}},
 	]
 	for d in defs:
@@ -107,13 +112,18 @@ func setup_players(x1: float, x2: float) -> void:
 		p.id = d.id
 		p.keys = d.keys
 		p.pos = Vector2(d.x, GROUND_Y)
-		var fig := StickFigure.new()
-		fig.color = d.color
-		fig.facing = d.facing
-		fig.position = p.pos
-		add_child(fig)
-		p.fig = fig
+		p.fig = make_character(d.character, d.color, d.facing, p.pos)
 		players.append(p)
+
+
+func make_character(character: int, accent: Color, facing: int, at: Vector2) -> Node2D:
+	var fig := CharSprite.new()
+	fig.character = character
+	fig.color = accent
+	fig.facing = facing
+	fig.position = at
+	add_child(fig)
+	return fig
 
 
 func get_player(id: int) -> PlayerState:
@@ -124,7 +134,7 @@ func get_player(id: int) -> PlayerState:
 
 
 func player_rect(p: PlayerState) -> Rect2:
-	return Rect2(p.pos.x - 8.0, p.pos.y - 44.0, 16.0, 44.0)
+	return Rect2(p.pos.x - CHAR_HALF_W, p.pos.y - CHAR_H, CHAR_HALF_W * 2.0, CHAR_H)
 
 
 func update_player(p: PlayerState, delta: float) -> void:
@@ -163,9 +173,9 @@ func update_player(p: PlayerState, delta: float) -> void:
 	for r in obstacles:
 		if player_rect(p).intersects(r):
 			if p.pos.x < r.get_center().x:
-				p.pos.x = r.position.x - 8.0
+				p.pos.x = r.position.x - CHAR_HALF_W
 			else:
-				p.pos.x = r.end.x + 8.0
+				p.pos.x = r.end.x + CHAR_HALF_W
 
 	p.fig.position = p.pos
 	if wants_throw and p.cooldown <= 0.0:
@@ -178,7 +188,7 @@ func stun_player(p: PlayerState, hint := "晕!") -> void:
 	p.fig.set_stunned(true)
 	Sfx.play(self, SFX_CLANK, -6.0, _rng.randf_range(0.9, 1.15))
 	shake(4.0, 0.25)
-	float_text(p.pos + Vector2(0, -54), hint, Color(1.0, 0.85, 0.3), 13)
+	float_text(p.pos + Vector2(0, -CHAR_H - 20.0), hint, Color(1.0, 0.85, 0.3), 13)
 
 
 # ---------- 投掷物 ----------
@@ -187,11 +197,11 @@ func throw_from(p: PlayerState) -> void:
 	p.cooldown = THROW_COOLDOWN
 	var target_x := throw_target_x(p)
 	p.fig.facing = 1 if target_x > p.pos.x else -1
-	p.fig.strike(StickFigure.Pose.THROW, 0.3)
+	p.fig.strike(CharSprite.Pose.THROW, 0.3)
 	var vx := (target_x - p.pos.x) / PROJ_FLIGHT + _rng.randf_range(-26.0, 26.0)
 	var vy := -PROJ_GRAVITY * PROJ_FLIGHT * 0.5 - 24.0
 	projectiles.append({
-		pos = p.pos + Vector2(p.fig.facing * 10.0, -36.0),
+		pos = p.pos + Vector2(p.fig.facing * 14.0, SHOULDER_Y),
 		vel = Vector2(vx, vy),
 		from = p.id,
 		kind = _rng.randi_range(0, 2),

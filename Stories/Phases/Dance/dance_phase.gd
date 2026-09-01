@@ -6,14 +6,15 @@ const ELEVATOR_TEX := preload("res://Assets/Edited/电梯箱.png")
 
 const BEAT := 60.0 / 96.0      # 96 BPM
 const LEAD_IN := 2.0
-const RECEPTOR_Y := 64.0
-const SCROLL_SPEED := 175.0
+const RECEPTOR_Y := 52.0
+const NOTE_SPAWN_Y := 236.0    # 音符只在这条线以上滚动，不挡住两人的立绘
+const SCROLL_SPEED := 130.0
 
 var lane_pose := [
-	StickFigure.Pose.DANCE_LEFT,
-	StickFigure.Pose.DANCE_DOWN,
-	StickFigure.Pose.DANCE_UP,
-	StickFigure.Pose.DANCE_RIGHT,
+	CharSprite.Pose.DANCE_LEFT,
+	CharSprite.Pose.DANCE_DOWN,
+	CharSprite.Pose.DANCE_UP,
+	CharSprite.Pose.DANCE_RIGHT,
 ]
 var arrow_rot := [-PI / 2.0, PI, 0.0, PI / 2.0]
 var arrow_poly := PackedVector2Array([
@@ -68,10 +69,10 @@ func _build_chart() -> Array:
 
 
 func _build_stage() -> void:
-	# 中间的电梯：两人隔着它斗舞
+	# 中间的电梯：两人隔着它斗舞，高度按人物身高配比
 	var sprite := Sprite2D.new()
 	sprite.texture = ELEVATOR_TEX
-	var s := 170.0 / float(ELEVATOR_TEX.get_width())
+	var s := 152.0 / float(ELEVATOR_TEX.get_height())
 	sprite.scale = Vector2.ONE * s
 	sprite.position = Vector2(320.0, GROUND_Y + 4.0 - ELEVATOR_TEX.get_height() * s * 0.5)
 	sprite.modulate = Color(0.62, 0.6, 0.66)
@@ -94,12 +95,14 @@ func _make_side(idx: int) -> Dictionary:
 	}
 	for n in _chart:
 		side.notes.append({time = n.time, lane = n.lane, judged = false})
-	var fig := StickFigure.new()
-	fig.color = P1_COLOR if idx == 0 else P2_COLOR
-	fig.facing = 1 if idx == 0 else -1
-	fig.position = Vector2(150.0 if idx == 0 else 490.0, GROUND_Y)
-	add_child(fig)
-	side.fig = fig
+	# 两人贴着电梯站，各自的箭头轨道在自己外侧
+	side.fig = make_character(
+		idx,
+		P1_COLOR if idx == 0 else P2_COLOR,
+		1 if idx == 0 else -1,
+		Vector2(225.0 if idx == 0 else 415.0, GROUND_Y),
+	)
+	var fig: Node2D = side.fig
 	side.label = make_hud_label(
 		"得分 0   连击 0",
 		10.0 if idx == 0 else 330.0, 316.0, 300.0, 13,
@@ -131,7 +134,7 @@ func phase_tick(delta: float) -> void:
 				side.miss += 1
 				side.combo = 0
 				_popup(side, int(n.lane), "烂!", Color(0.9, 0.35, 0.3))
-				side.fig.strike(StickFigure.Pose.MISS, 0.3)
+				side.fig.strike(CharSprite.Pose.MISS, 0.3)
 				Sfx.play(self, Sfx.blip(220.0, 90.0, 0.16, 0.25))
 				_refresh_score(side)
 	if _elapsed > _end_time:
@@ -178,7 +181,7 @@ func _judge(side: Dictionary, lane: int) -> void:
 		side.miss += 1
 		side.combo = 0
 		_popup(side, lane, "烂!", Color(0.9, 0.35, 0.3))
-		side.fig.strike(StickFigure.Pose.MISS, 0.3)
+		side.fig.strike(CharSprite.Pose.MISS, 0.3)
 		Sfx.play(self, Sfx.blip(220.0, 90.0, 0.16, 0.25))
 	_refresh_score(side)
 
@@ -195,7 +198,7 @@ func _finish() -> void:
 	var total_miss: int = _sides[0].miss + _sides[1].miss
 	var text := "跳完了……这也太烂了吧！" if total_miss > 0 else "跳完了！整齐得可怕……"
 	for side in _sides:
-		side.fig.strike(StickFigure.Pose.MISS, 2.2)
+		side.fig.strike(CharSprite.Pose.MISS, 2.2)
 	show_banner(text, Color(0.9, 0.8, 0.5))
 	Sfx.play(self, Sfx.blip(392.0, 196.0, 0.5, 0.35))
 	await get_tree().create_timer(2.2).timeout
@@ -219,7 +222,7 @@ func _draw_front() -> void:
 			if n.judged:
 				continue
 			var y := RECEPTOR_Y + (float(n.time) - _elapsed) * SCROLL_SPEED
-			if y > 380.0 or y < 40.0:
+			if y > NOTE_SPAWN_Y or y < 34.0:
 				continue
 			draw_set_transform(Vector2(float(side.xs[int(n.lane)]), y), arrow_rot[int(n.lane)], Vector2.ONE)
 			draw_colored_polygon(arrow_poly, side.note_color)

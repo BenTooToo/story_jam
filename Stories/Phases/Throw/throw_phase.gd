@@ -16,7 +16,8 @@ var _timer_label: Label
 
 func _ready() -> void:
 	_rng.randomize()
-	obstacles.append(Rect2(292, 224, 56, 76))
+	# 中间的隔断要比人高，跳也翻不过去，只能抛物线越过
+	obstacles.append(Rect2(292, 202, 56, 98))
 	setup_players(120.0, 520.0)
 	time_left = duration
 	_build_hud()
@@ -29,8 +30,8 @@ func _start() -> void:
 
 
 func _build_hud() -> void:
-	_score_left = make_hud_label("蓝方 0", 10, 58, 220, 15, P1_COLOR, HORIZONTAL_ALIGNMENT_LEFT)
-	_score_right = make_hud_label("粉方 0", 410, 58, 220, 15, P2_COLOR, HORIZONTAL_ALIGNMENT_RIGHT)
+	_score_left = make_hud_label("P1  0", 10, 58, 220, 15, P1_COLOR, HORIZONTAL_ALIGNMENT_LEFT)
+	_score_right = make_hud_label("P2  0", 410, 58, 220, 15, P2_COLOR, HORIZONTAL_ALIGNMENT_RIGHT)
 	_timer_label = make_hud_label(str(ceili(duration)), 270, 56, 100, 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	make_hud_label(
 		"P1：A/D 移动  W 跳  F 扔      P2：←/→ 移动  ↑ 跳  / 扔",
@@ -73,7 +74,7 @@ func _on_player_hit(victim: PlayerState, proj: Dictionary) -> void:
 	var thrower := get_player(int(proj.from))
 	if thrower != null and running:
 		thrower.score += 10
-		float_text(victim.pos + Vector2(0, -54), "+10", thrower.fig.color, 15)
+		float_text(victim.pos + Vector2(0, -CHAR_H - 26.0), "+10", thrower.fig.color, 15)
 		_update_scores()
 	victim.vel = Vector2.ZERO
 	stun_player(victim, "晕!")
@@ -109,7 +110,7 @@ func _step_items(delta: float) -> void:
 		for p in players:
 			if p.stun > 0.0:
 				continue
-			if (p.pos + Vector2(0, -22)).distance_to(it.pos) < 20.0:
+			if (p.pos + Vector2(0, -CHAR_H * 0.5)).distance_to(it.pos) < 26.0:
 				p.score += int(it.tier)
 				float_text(it.pos + Vector2(0, -10), "+%d" % int(it.tier), p.fig.color, 13)
 				Sfx.play(self, Sfx.blip(880.0, 1318.0, 0.09, 0.3))
@@ -124,8 +125,8 @@ func _step_items(delta: float) -> void:
 # ---------- 结算 ----------
 
 func _update_scores() -> void:
-	_score_left.text = "蓝方 %d" % players[0].score
-	_score_right.text = "粉方 %d" % players[1].score
+	_score_left.text = "P1  %d" % players[0].score
+	_score_right.text = "P2  %d" % players[1].score
 
 
 func _finish() -> void:
@@ -136,19 +137,19 @@ func _finish() -> void:
 	var color := Color.WHITE
 	if p1.score > p2.score:
 		winner = 1
-		text = "蓝方获胜！"
+		text = "P1 获胜！"
 		color = P1_COLOR
 	elif p2.score > p1.score:
 		winner = 2
-		text = "粉方获胜！"
+		text = "P2 获胜！"
 		color = P2_COLOR
 	for p in players:
 		p.fig.set_stunned(false)
 		p.stun = 0.0
 		if winner == 0 or p.id == winner:
-			p.fig.strike(StickFigure.Pose.CHEER, 2.4)
+			p.fig.strike(CharSprite.Pose.CHEER, 2.4)
 		else:
-			p.fig.strike(StickFigure.Pose.MISS, 2.4)
+			p.fig.strike(CharSprite.Pose.MISS, 2.4)
 	show_banner(text, color)
 	Sfx.play(self, Sfx.blip(523.0, 784.0, 0.35, 0.4))
 	await get_tree().create_timer(2.4).timeout

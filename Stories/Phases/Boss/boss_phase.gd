@@ -32,9 +32,10 @@ func _ready() -> void:
 
 
 func _build_boss() -> void:
-	var s := 92.0 / float(BOSS_TEX.get_width())
+	var w := 148.0
+	var s := w / float(BOSS_TEX.get_width())
 	var h := BOSS_TEX.get_height() * s
-	_boss_rect = Rect2(320.0 - 46.0, GROUND_Y + 2.0 - h, 92.0, h)
+	_boss_rect = Rect2(320.0 - w * 0.5, GROUND_Y + 2.0 - h, w, h)
 	obstacles.append(_boss_rect)
 	_boss_sprite = Sprite2D.new()
 	_boss_sprite.texture = BOSS_TEX
@@ -126,7 +127,7 @@ func _do_attack() -> void:
 		# 丢齿轮：朝每个玩家的当前位置抛一枚，地上有落点预警
 		Sfx.play(self, Sfx.blip(140.0, 320.0, 0.2, 0.35))
 		for p in players:
-			var start := Vector2(320.0, _boss_rect.position.y + 8.0)
+			var start := Vector2(320.0, _boss_rect.position.y + _boss_rect.size.y * 0.35)
 			var land_x: float = clampf(p.pos.x + _rng.randf_range(-14.0, 14.0), ARENA_LEFT, ARENA_RIGHT)
 			var vx := (land_x - start.x) / 1.0
 			var vy := ((GROUND_Y - start.y) - 0.5 * PROJ_GRAVITY * 1.0) / 1.0
@@ -182,7 +183,7 @@ func _die() -> void:
 	for p in players:
 		p.fig.set_stunned(false)
 		p.stun = 0.0
-		p.fig.strike(StickFigure.Pose.CHEER, 3.0)
+		p.fig.strike(CharSprite.Pose.CHEER, 3.0)
 	var tw := create_tween()
 	tw.tween_interval(0.4)
 	tw.tween_property(_boss_sprite, "rotation", PI / 2.0, 0.9) \
@@ -227,24 +228,33 @@ func _proxy_draw(cv: Node2D, _tag: String) -> void:
 			cv.draw_line(Vector2(mx - 6, my + 6), Vector2(mx + 6, my - 6), Color(0.95, 0.35, 0.3), 2.0, true)
 	if not boss_alive:
 		return
-	# 怒目、锯齿嘴、挥舞的手臂
+	# 怒目、锯齿嘴、挥舞的手臂（都按箱体尺寸等比摆放）
 	var cx := _boss_rect.get_center().x
 	var top := _boss_rect.position.y
+	var w := _boss_rect.size.x
+	var h := _boss_rect.size.y
 	var white := Color(0.95, 0.95, 0.9)
-	var wob := sin(_t * 6.0) * 5.0
-	cv.draw_line(Vector2(cx - 20, top + 24), Vector2(cx - 7, top + 30), white, 3.0, true)
-	cv.draw_line(Vector2(cx + 20, top + 24), Vector2(cx + 7, top + 30), white, 3.0, true)
+	var wob := sin(_t * 6.0) * 7.0
+	var eye_y := top + h * 0.20
+	cv.draw_line(Vector2(cx - w * 0.24, eye_y), Vector2(cx - w * 0.09, eye_y + h * 0.05), white, 3.0, true)
+	cv.draw_line(Vector2(cx + w * 0.24, eye_y), Vector2(cx + w * 0.09, eye_y + h * 0.05), white, 3.0, true)
 	var mouth := PackedVector2Array()
+	var mouth_y := top + h * 0.34
 	for k in 9:
-		mouth.append(Vector2(cx - 22 + k * 5.5, top + 46 + (3.0 if k % 2 == 0 else -3.0)))
+		var tooth := h * 0.022
+		mouth.append(Vector2(
+			cx - w * 0.26 + k * (w * 0.065),
+			mouth_y + (tooth if k % 2 == 0 else -tooth),
+		))
 	cv.draw_polyline(mouth, white, 2.5, true)
+	var arm_y := top + h * 0.30
 	cv.draw_line(
-		Vector2(_boss_rect.position.x, top + 34),
-		Vector2(_boss_rect.position.x - 20, top + 6 - wob),
-		white, 3.0, true,
+		Vector2(_boss_rect.position.x, arm_y),
+		Vector2(_boss_rect.position.x - 26.0, top + h * 0.06 - wob),
+		white, 3.5, true,
 	)
 	cv.draw_line(
-		Vector2(_boss_rect.end.x, top + 34),
-		Vector2(_boss_rect.end.x + 20, top + 6 + wob),
-		white, 3.0, true,
+		Vector2(_boss_rect.end.x, arm_y),
+		Vector2(_boss_rect.end.x + 26.0, top + h * 0.06 + wob),
+		white, 3.5, true,
 	)
