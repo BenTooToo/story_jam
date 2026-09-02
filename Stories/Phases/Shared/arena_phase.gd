@@ -60,6 +60,8 @@ class PlayerState:
 
 ## 背景底色。子类可以按拍子改它，让整个画面跟着呼吸
 var bg_color := Color(0.055, 0.055, 0.075)
+## 地面上那条浅色接触线。跳舞不要，人直接站在反光地板上
+var draw_ground_line := true
 
 var players := []
 var projectiles := []          # {pos, vel, grav, from, item, rot, spin}
@@ -104,8 +106,9 @@ func _setup_floor() -> void:
 	var floor_rect := ColorRect.new()
 	floor_rect.name = "Floor"
 	floor_rect.material = mat
-	floor_rect.position = Vector2(0.0, GROUND_Y + 5.0)
-	floor_rect.size = Vector2(640.0, 130.0)
+	# 顶到脚下，白线关掉时人物和倒影之间不会露一条底色
+	floor_rect.position = Vector2(0.0, GROUND_Y + 1.0)
+	floor_rect.size = Vector2(640.0, 134.0)
 	floor_rect.color = Color.BLACK
 	floor_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	floor_rect.z_index = 5
@@ -491,7 +494,8 @@ func run_countdown() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 640, 360), bg_color)
 	_draw_back()
-	draw_line(Vector2(0, GROUND_Y + 3.0), Vector2(640, GROUND_Y + 3.0), Color(0.85, 0.82, 0.72), 4.0, true)
+	if draw_ground_line:
+		draw_line(Vector2(0, GROUND_Y + 3.0), Vector2(640, GROUND_Y + 3.0), Color(0.85, 0.82, 0.72), 4.0, true)
 	if draw_obstacle_blocks:
 		for r in obstacles:
 			Art.draw_in_rect(self, "隔断", r)

@@ -7,6 +7,14 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 
 const ELEVATOR_TEX := preload("res://Assets/Edited/电梯箱.png")
 const SHAFT_SHADER := preload("res://Assets/Theme/light_shafts.gdshader")
+## 人物按电梯场景结尾的大小来（那边 NPC 是 0.55 / 0.586，电梯箱 1.0）
+const DANCER_SCALE := 0.56
+const DANCER_X := [195.0, 445.0]
+## 轨道整体挪到人物外侧，不和放大后的人物重叠
+const LANE_XS := [[30.0, 72.0, 114.0, 156.0], [484.0, 526.0, 568.0, 610.0]]
+## 颜色 / 亮度都用 tween 过渡，不硬切
+const TINT_TWEEN := 0.6
+const ENERGY_TWEEN := BAR
 ## 副歌段光柱打满，主歌 / 过渡收一点
 const CHORUS_BARS := [[16, 32], [40, 56]]
 
@@ -81,7 +89,11 @@ var _next_beat := 0.0
 var _last_note_time := 0.0
 var _music: AudioStreamPlayer
 var _disco: Array[ShaderMaterial] = []   # 两层交叉的光柱
-var _last_beat := -1
+var _disco_color: Array[Color] = []       # 每层当前颜色（被 tween 推着走）
+var _bg_tint := Color(0.055, 0.055, 0.075)
+var _energy := 0.6                        # 副歌 1.0 / 其他 0.6，换段时 tween
+var _bar_seen := -1
+var _tint_tweens: Array[Tween] = []
 const BG_BASE := Color(0.055, 0.055, 0.075)
 var _music_started := false
 var _finishing := false
@@ -90,6 +102,7 @@ var _count_label: Label
 
 func _ready() -> void:
 	draw_obstacle_blocks = false
+	draw_ground_line = false
 	_chart = _build_chart()
 	_build_stage()
 	_build_disco()
@@ -260,12 +273,10 @@ func _spread_lanes(notes: Array) -> void:
 
 
 func _build_stage() -> void:
-	# 中间的电梯：两人隔着它斗舞，高度按人物身高配比
+	# 中间的电梯：和电梯场景结尾一样用原尺寸，两人隔着它斗舞
 	var sprite := Sprite2D.new()
 	sprite.texture = ELEVATOR_TEX
-	var s := 152.0 / float(ELEVATOR_TEX.get_height())
-	sprite.scale = Vector2.ONE * s
-	sprite.position = Vector2(320.0, GROUND_Y + 4.0 - ELEVATOR_TEX.get_height() * s * 0.5)
+	sprite.position = Vector2(320.0, GROUND_Y + 4.0 - ELEVATOR_TEX.get_height() * 0.5)
 	sprite.modulate = Color(0.62, 0.6, 0.66)
 	add_child(sprite)
 
@@ -302,6 +313,8 @@ func _build_disco() -> void:
 		rect.z_index = 3
 		add_child(rect)
 		_disco.append(mat)
+		_disco_color.append(Color.from_hsv(0.5 * i, 0.75, 1.0))
+		_tint_tweens.append(null)
 
 
 func _in_chorus(bar: int) -> bool:
@@ -311,31 +324,53 @@ func _in_chorus(bar: int) -> bool:
 	return false
 
 
+## 换小节：给每层灯、背景算新目标色，用 tween 推过去；进/出副歌时亮度也用一小节缓过去。
+func _retint(bar: int) -> void:
+	for i in _disco.size():
+		var hue := fmod(float(bar) * 0.17 + float(i) * 0.5, 1.0)
+		var target := Color.from_hsv(hue, 0.75, 1.0)
+		if _tint_tweens[i] != null and _tint_tweens[i].is_valid():
+			_tint_tweens[i].kill()
+		var tw := create_tween()
+		tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_method(_set_disco_color.bind(i), _disco_color[i], target, TINT_TWEEN)
+		_tint_tweens[i] = tw
+	var bg_target := Color.from_hsv(fmod(float(bar) * 0.17, 1.0), 0.6, 0.35)
+	var bg_tw := create_tween()
+	bg_tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bg_tw.tween_property(self, "_bg_tint", bg_target, TINT_TWEEN)
+	var energy_target := 1.0 if _in_chorus(bar) else 0.6
+	if not is_equal_approx(energy_target, _energy):
+		var en_tw := create_tween()
+		en_tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		en_tw.tween_property(self, "_energy", energy_target, ENERGY_TWEEN)
+
+
+func _set_disco_color(c: Color, i: int) -> void:
+	_disco_color[i] = c
+	_disco[i].set_shader_parameter("light_color", c)
+
+
 ## 每帧按谱面时钟驱动灯光和人物的律动。
 func _drive_disco(delta: float) -> void:
 	var t := _elapsed
 	var beat_pos := t / BEAT
 	var frac := beat_pos - floorf(beat_pos)
-	var bar := int(floorf(t / BAR))
+	var bar := maxi(int(floorf(t / BAR)), 0)
 	# 起曲前灯只留一点底光，不抢倒计时
 	var started := _music_started and t >= 0.0
-	var energy := 1.0 if _in_chorus(bar) else 0.6
 	var kick := exp(-frac * 5.0) if started else 0.0
+	if started and bar != _bar_seen:
+		_bar_seen = bar
+		_retint(bar)
 	for i in _disco.size():
 		var mat := _disco[i]
-		var hue := fmod(float(bar) * 0.17 + float(i) * 0.5, 1.0)
-		var col := Color.from_hsv(hue, 0.75, 1.0)
-		mat.set_shader_parameter("light_color", col)
 		var base := 0.22 if started else 0.12
-		mat.set_shader_parameter("intensity", (base + 0.85 * kick) * energy)
+		mat.set_shader_parameter("intensity", (base + 0.85 * kick) * _energy)
 		var ang := (-30.0 + i * 60.0) + 24.0 * sin(t * 0.7 + i * PI)
 		mat.set_shader_parameter("angle_deg", ang)
-	# 背景跟着拍子染一点当前色，整个画面一起呼吸
-	if started:
-		var tint := Color.from_hsv(fmod(float(bar) * 0.17, 1.0), 0.6, 0.35)
-		bg_color = BG_BASE.lerp(tint, 0.35 * kick * energy)
-	else:
-		bg_color = BG_BASE
+	# 背景跟着拍子染一点当前色（目标色本身是 tween 过去的），整个画面一起呼吸
+	bg_color = BG_BASE.lerp(_bg_tint, 0.35 * kick * _energy) if started else BG_BASE
 	# 人物：每拍小幅点头，打中时弹一下并闪白
 	for side in _sides:
 		side.punch = maxf(float(side.punch) - delta * 4.5, 0.0)
@@ -351,7 +386,7 @@ func _make_side(idx: int) -> Dictionary:
 		score = 0,
 		combo = 0,
 		miss = 0,
-		xs = [66.0, 114.0, 162.0, 210.0] if idx == 0 else [430.0, 478.0, 526.0, 574.0],
+		xs = LANE_XS[idx],
 		keymap = {KEY_A: 0, KEY_S: 1, KEY_W: 2, KEY_D: 3} if idx == 0 \
 			else {KEY_LEFT: 0, KEY_DOWN: 1, KEY_UP: 2, KEY_RIGHT: 3},
 		arrow_key = "绿箭头" if idx == 0 else "红箭头",
@@ -368,9 +403,10 @@ func _make_side(idx: int) -> Dictionary:
 		idx,
 		P1_COLOR if idx == 0 else P2_COLOR,
 		1 if idx == 0 else -1,
-		Vector2(225.0 if idx == 0 else 415.0, GROUND_Y),
+		Vector2(DANCER_X[idx], GROUND_Y),
 	)
 	var fig: Node2D = side.fig
+	fig.char_scale = DANCER_SCALE
 	side.label = make_hud_label(
 		"得分 0   连击 0",
 		10.0 if idx == 0 else 330.0, 316.0, 300.0, 13,
@@ -462,13 +498,13 @@ func _judge(side: Dictionary, lane: int) -> void:
 	var fig_pos: Vector2 = side.fig.position
 	var burst_col := Color(0.5, 0.9, 0.45) if side.arrow_key == "绿箭头" else Color(1.0, 0.45, 0.35)
 	if d <= PERFECT_WINDOW:
-		Fx.hit_burst(self, fig_pos + Vector2(0, -58), burst_col, 18, 1.1)
+		Fx.hit_burst(self, fig_pos + Vector2(0, -side.fig.body_height() * 0.62), burst_col, 18, 1.1)
 		side.score += 5
 		side.combo += 1
 		_popup(side, lane, "完美!", Color(1.0, 0.85, 0.3))
 		Sfx.play(self, Sfx.blip(1046.0, 1200.0, 0.08, 0.3))
 	elif d <= GOOD_WINDOW:
-		Fx.hit_burst(self, fig_pos + Vector2(0, -58), burst_col, 10, 0.7)
+		Fx.hit_burst(self, fig_pos + Vector2(0, -side.fig.body_height() * 0.62), burst_col, 10, 0.7)
 		side.score += 2
 		side.combo += 1
 		_popup(side, lane, "还行", Color(0.55, 0.85, 0.5))
