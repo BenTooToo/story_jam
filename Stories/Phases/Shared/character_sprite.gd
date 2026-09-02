@@ -27,14 +27,22 @@ const SHEETS := [
 	preload("res://Assets/Branch/新人物行走.png"),    # 2 行走：4 帧循环
 ]
 const FRAME_SIZE := 256.0
-const FOOT_Y := 253.0                        # 素材里脚底所在的行，三张表一致
+## 每张表每一行每一帧脚底所在的行（量素材得到）。
+## 姿势类（跳舞 / 投掷）按帧对齐，每个姿势都正好站在地上；
+## 行走类是循环动画，腾空帧本来就该离地，统一用触地帧的那一行，免得跑起来上下抖。
+const FOOT_ROWS := [
+	[[253.0, 252.0, 252.0, 253.0], [251.0, 252.0, 255.0, 252.0]],   # dance.png
+	[[253.0, 253.0, 252.0, 252.0], [251.0, 250.0, 252.0, 253.0]],   # 扔东西.png
+	[[254.0, 254.0, 254.0, 254.0], [254.0, 254.0, 254.0, 254.0]],   # 新人物行走.png
+]
 const SHEET_ROW := [1, 0]                    # NPC0 -> 下排，NPC1 -> 上排
 const PIVOT := [117.0, 113.0]                # 按行给的胯部中轴：上排男 / 下排女
 
 ## 每个姿势对应哪张表的哪几帧。loop = false 的播完停在最后一帧。
 const POSE_CLIP := {
 	Pose.IDLE: {sheet = 0, frames = [0], fps = 0.0, loop = true},
-	Pose.RUN: {sheet = 2, frames = [0, 1, 2, 3], fps = 10.0, loop = true},
+	# 8 fps：素材的 1、3 两帧（过渡步）本来就很像，10 fps 每帧只有 0.1 秒眼睛只记住两个跨步
+	Pose.RUN: {sheet = 2, frames = [0, 1, 2, 3], fps = 8.0, loop = true},
 	Pose.JUMP: {sheet = 2, frames = [0], fps = 0.0, loop = true},
 	Pose.THROW: {sheet = 1, frames = [1, 2, 3], fps = 11.0, loop = false},
 	Pose.STUNNED: {sheet = 0, frames = [0], fps = 0.0, loop = true},
@@ -151,9 +159,11 @@ func _refresh() -> void:
 	# 跑和扔现在是真动画，不再靠代码位移凑；只有静止的姿势加一点点动静
 	var lift := 0.0
 	var tilt := 0.0
+	var breathe := 1.0
 	match pose:
 		Pose.IDLE:
-			lift = sin(_time * 2.2) * 0.8
+			# 呼吸用以脚为锚的极小纵向缩放，不平移——平移会让脚离地
+			breathe = 1.0 + 0.006 * sin(_time * 2.2)
 		Pose.STUNNED:
 			tilt = sin(_time * 8.0) * 0.12
 		Pose.MISS:
@@ -163,6 +173,7 @@ func _refresh() -> void:
 
 	rotation = tilt
 	var s := char_scale
-	_body.scale = Vector2(s * face, s)
+	var foot_y: float = FOOT_ROWS[int(clip.sheet)][row][frame]
+	_body.scale = Vector2(s * face, s * breathe)
 	# 把素材里的胯部中轴和落脚线搬到本节点原点上
-	_body.position = Vector2(-PIVOT[row] * s * face, -FOOT_Y * s + lift)
+	_body.position = Vector2(-PIVOT[row] * s * face, -foot_y * s * breathe + lift)

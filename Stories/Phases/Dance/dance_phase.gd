@@ -359,18 +359,19 @@ func _drive_disco(delta: float) -> void:
 	var bar := maxi(int(floorf(t / BAR)), 0)
 	# 起曲前灯只留一点底光，不抢倒计时
 	var started := _music_started and t >= 0.0
-	var kick := exp(-frac * 5.0) if started else 0.0
+	# 每拍冲一下再衰减：峰值压低、衰减放缓，是"呼吸"不是"频闪"，看久了不晃眼
+	var kick := exp(-frac * 3.2) if started else 0.0
 	if started and bar != _bar_seen:
 		_bar_seen = bar
 		_retint(bar)
 	for i in _disco.size():
 		var mat := _disco[i]
-		var base := 0.22 if started else 0.12
-		mat.set_shader_parameter("intensity", (base + 0.85 * kick) * _energy)
+		var base := 0.26 if started else 0.12
+		mat.set_shader_parameter("intensity", (base + 0.38 * kick) * _energy)
 		var ang := (-30.0 + i * 60.0) + 24.0 * sin(t * 0.7 + i * PI)
 		mat.set_shader_parameter("angle_deg", ang)
 	# 背景跟着拍子染一点当前色（目标色本身是 tween 过去的），整个画面一起呼吸
-	bg_color = BG_BASE.lerp(_bg_tint, 0.35 * kick * _energy) if started else BG_BASE
+	bg_color = BG_BASE.lerp(_bg_tint, 0.2 * kick * _energy) if started else BG_BASE
 	# 人物：每拍小幅点头，打中时弹一下并闪白
 	for side in _sides:
 		side.punch = maxf(float(side.punch) - delta * 4.5, 0.0)
