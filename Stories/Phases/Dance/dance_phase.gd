@@ -19,6 +19,9 @@ const SCROLL_SPEED := 140.0
 const PERFECT_WINDOW := 0.08
 const GOOD_WINDOW := 0.16
 const MISS_WINDOW := 0.22
+## 空按（附近没音符也按了）的惩罚：计一次烂、连击归零、扣这么多分。
+## 没有这条的话，狂点或者四个键一起按就能白吃所有音符。
+const WHIFF_PENALTY := 2
 ## 同一条轨道上两个音符的最小间隔，必须大于判定窗口，
 ## 否则玩家打掉前一个之后，后一个在窗口里已经无音符可配，必漏。
 const MIN_LANE_GAP := MISS_WINDOW + 0.06
@@ -358,6 +361,15 @@ func _judge(side: Dictionary, lane: int) -> void:
 			best_dt = dt
 			best = n
 	if best.is_empty() or absf(best_dt) > MISS_WINDOW:
+		# 空按。起曲之前（还在数拍子）随便试键不罚
+		if _elapsed >= -MISS_WINDOW:
+			side.miss += 1
+			side.combo = 0
+			side.score = maxi(int(side.score) - WHIFF_PENALTY, 0)
+			_popup(side, lane, "乱按!", Color(0.75, 0.45, 0.4))
+			side.fig.strike(CharSprite.Pose.MISS, 0.25)
+			Sfx.play(self, Sfx.blip(160.0, 110.0, 0.09, 0.22))
+			_refresh_score(side)
 		return
 	best.judged = true
 	var d := absf(best_dt)
