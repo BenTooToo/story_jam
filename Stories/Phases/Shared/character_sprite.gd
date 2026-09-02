@@ -20,7 +20,7 @@ enum Pose {
 	CHEER,
 }
 
-const Art := preload("res://Stories/Phases/Shared/phase_art.gd")
+const Fx := preload("res://Stories/Phases/Shared/phase_fx.gd")
 const SHEETS := [
 	preload("res://Assets/Branch/dance.png"),        # 0 跳舞：站立 / 甩手 / 抬手 / 收手
 	preload("res://Assets/Branch/扔东西.png"),        # 1 投掷：站立 / 抬手 / 挥臂 / 出手
@@ -59,6 +59,7 @@ var _time := 0.0
 var _clip_time := 0.0
 var _last_pose := -1
 var _pose_hold := 0.0
+var _stun_ring: CPUParticles2D
 
 
 func _ready() -> void:
@@ -77,8 +78,6 @@ func _process(delta: float) -> void:
 		if _pose_hold <= 0.0 and pose != Pose.STUNNED:
 			pose = Pose.IDLE
 	_refresh()
-	if pose == Pose.STUNNED:
-		queue_redraw()
 
 
 ## 屏幕上的身高，供碰撞盒和飘字定位用。
@@ -96,8 +95,18 @@ func set_stunned(on: bool) -> void:
 	if on:
 		pose = Pose.STUNNED
 		_pose_hold = 0.0
-	elif pose == Pose.STUNNED:
-		pose = Pose.IDLE
+		if _stun_ring == null:
+			_stun_ring = Fx.make_stun_ring(-body_height() - 10.0)
+			add_child(_stun_ring)
+	else:
+		if _stun_ring != null:
+			# 停止发射但留着让在场的粒子自己淡完，不会啪一下消失
+			_stun_ring.emitting = false
+			var ring := _stun_ring
+			get_tree().create_timer(ring.lifetime).timeout.connect(ring.queue_free)
+			_stun_ring = null
+		if pose == Pose.STUNNED:
+			pose = Pose.IDLE
 
 
 ## 根据移动状态自动选姿势；不打断临时姿势和眩晕。
@@ -157,13 +166,3 @@ func _refresh() -> void:
 	_body.scale = Vector2(s * face, s)
 	# 把素材里的胯部中轴和落脚线搬到本节点原点上
 	_body.position = Vector2(-PIVOT[row] * s * face, -FOOT_Y * s + lift)
-
-
-## 头顶转圈的眩晕提示
-func _draw() -> void:
-	if pose != Pose.STUNNED:
-		return
-	var head_y := -body_height() - 8.0
-	for k in 3:
-		var a := _time * 4.0 + k * TAU / 3.0
-		Art.draw_sprite(self, "眩晕星星", Vector2(cos(a) * 13.0, head_y + sin(a) * 3.0), 7.0)

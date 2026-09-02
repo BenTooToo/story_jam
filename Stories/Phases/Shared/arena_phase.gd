@@ -7,6 +7,7 @@ signal phase_finished(result: Dictionary)
 
 const CharSprite := preload("res://Stories/Phases/Shared/character_sprite.gd")
 const Art := preload("res://Stories/Phases/Shared/phase_art.gd")
+const Fx := preload("res://Stories/Phases/Shared/phase_fx.gd")
 const Sfx := preload("res://Stories/Phases/Shared/retro_sfx.gd")
 const CanvasProxy := preload("res://Stories/Phases/Shared/canvas_proxy.gd")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
@@ -50,7 +51,6 @@ class PlayerState:
 
 var players := []
 var projectiles := []          # {pos, vel, from, item, rot, spin}
-var pops := []                 # 命中 / 消失时的小圆圈特效 {pos, t}
 var obstacles: Array[Rect2] = []
 var draw_obstacle_blocks := true
 var controls_enabled := false
@@ -85,12 +85,6 @@ func _process(delta: float) -> void:
 	for p in players:
 		update_player(p, delta)
 	step_projectiles(delta)
-	var i := pops.size() - 1
-	while i >= 0:
-		pops[i].t += delta
-		if pops[i].t > 0.3:
-			pops.remove_at(i)
-		i -= 1
 	queue_redraw()
 
 
@@ -208,12 +202,13 @@ func update_player(p: PlayerState, delta: float) -> void:
 	p.fig.auto_pose(p.on_ground, p.vel.x)
 
 
-func stun_player(p: PlayerState, hint := "晕!") -> void:
+func stun_player(p: PlayerState, hint := "!") -> void:
 	p.stun = STUN_TIME
 	p.fig.set_stunned(true)
 	Sfx.play(self, SFX_CLANK, -6.0, _rng.randf_range(0.9, 1.15))
 	shake(4.0, 0.25)
-	float_text(p.pos + Vector2(0, -CHAR_H - 20.0), hint, Color(1.0, 0.85, 0.3), 13)
+	Fx.hit_burst(self, p.pos + Vector2(0, -CHAR_H * 0.6), Color(1.0, 0.86, 0.45), 22, 1.25)
+	Fx.pop_text(self, p.pos + Vector2(0, -CHAR_H - 16.0), hint, Color(1.0, 0.85, 0.3), 22, 0.45)
 
 
 # ---------- 投掷物 ----------
@@ -263,7 +258,8 @@ func step_projectiles(delta: float) -> void:
 						dead = true
 						break
 		if dead:
-			pops.append({pos = pr.pos, t = 0.0})
+			# 东西砸到什么就在那儿迸一下，粒子自己淡完自己清理
+			Fx.hit_burst(self, pr.pos)
 			projectiles.remove_at(i)
 		i -= 1
 
@@ -283,24 +279,9 @@ func _apply_shake(delta: float) -> void:
 			position = Vector2.ZERO
 
 
+## 得分之类的小飘字。统一走 Fx.pop_text，淡入淡出，不会啪一下出现又啪一下消失。
 func float_text(at: Vector2, text: String, color: Color, font_size := 13) -> void:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_override("font", PIXEL_FONT)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 3)
-	label.position = at + Vector2(-24.0, -14.0)
-	label.size = Vector2(48.0, 20.0)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.z_index = 50
-	add_child(label)
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(label, "position:y", label.position.y - 26.0, 0.7)
-	tw.tween_property(label, "modulate:a", 0.0, 0.7).set_delay(0.25)
-	tw.chain().tween_callback(label.queue_free)
+	Fx.pop_text(self, at, text, color, font_size, 0.35, 26.0)
 
 
 func hud() -> CanvasLayer:
@@ -337,20 +318,38 @@ func make_hud_label(
 func show_banner(text: String, color := Color.WHITE) -> Label:
 	var label := make_hud_label(text, 0.0, 128.0, 640.0, 26, color, HORIZONTAL_ALIGNMENT_CENTER)
 	label.add_theme_constant_override("outline_size", 5)
+	_pulse_in(label, 0.28)
 	return label
+
+
+## 淡入 + 轻微弹一下，别让文字啪一声直接出现
+func _pulse_in(label: Label, duration := 0.22) -> void:
+	label.pivot_offset = label.size * 0.5
+	label.modulate.a = 0.0
+	label.scale = Vector2(0.72, 0.72)
+	var tw := label.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "modulate:a", 1.0, duration * 0.6)
+	tw.tween_property(label, "scale", Vector2.ONE, duration) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func run_countdown() -> void:
 	var label := make_hud_label("3", 0.0, 120.0, 640.0, 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	for s in ["3", "2", "1"]:
 		label.text = s
+		_pulse_in(label)
 		Sfx.play(self, Sfx.blip(440.0, 430.0, 0.1, 0.35))
 		await get_tree().create_timer(0.7).timeout
 	label.text = "开始!"
+	_pulse_in(label, 0.3)
 	Sfx.play(self, Sfx.blip(880.0, 900.0, 0.16, 0.4))
 	controls_enabled = true
 	await get_tree().create_timer(0.5).timeout
-	label.queue_free()
+	# 淡出，不是直接消失
+	var out := label.create_tween()
+	out.tween_property(label, "modulate:a", 0.0, 0.25)
+	out.tween_callback(label.queue_free)
 
 
 # ---------- 绘制 ----------
@@ -363,12 +362,6 @@ func _draw() -> void:
 		for r in obstacles:
 			Art.draw_in_rect(self, "隔断", r)
 	_draw_projectiles()
-	for pop in pops:
-		var k: float = pop.t / 0.3
-		Art.draw_sprite(
-			self, "命中特效", pop.pos, 12.0 + k * 20.0, 0.0,
-			Color(1, 1, 1, 1.0 - k),
-		)
 	_draw_front()
 
 

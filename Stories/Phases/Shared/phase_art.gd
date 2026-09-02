@@ -35,15 +35,12 @@ const ITEMS := [
 const PATHS := {
 	"绿箭头": {path = "res://Assets/Branch/绿箭头.png", rect = Rect2(42, 11, 48, 89)},
 	"红箭头": {path = "res://Assets/Branch/红箭头.png", rect = Rect2(42, 10, 48, 93)},
-	# 以下还没到货，先用中性灰占位
+	# 阶段一场地中间的隔断，教室门正好
+	"隔断": {path = "res://Assets/Branch/door1_副本.png", rect = Rect2(0, 0, 127, 255)},
+	# 还没到货，先用中性灰占位
 	"怪兽": {path = "res://Assets/Branch/电梯怪兽.png", rect = Rect2()},
-	"齿轮": {path = "res://Assets/Branch/齿轮.png", rect = Rect2()},
-	"冲击波": {path = "res://Assets/Branch/冲击波.png", rect = Rect2()},
-	"落点预警": {path = "res://Assets/Branch/落点预警.png", rect = Rect2()},
-	"眩晕星星": {path = "res://Assets/Branch/眩晕星星.png", rect = Rect2()},
-	"命中特效": {path = "res://Assets/Branch/命中特效.png", rect = Rect2()},
-	"隔断": {path = "res://Assets/Branch/隔断.png", rect = Rect2()},
 }
+## 命中迸溅、眩晕、冲击波、落点预警都改用粒子 + 文字了，见 phase_fx.gd，不再需要贴图。
 ## 占位统一用这个灰，方便一眼看出"这里还缺素材"
 const PLACEHOLDER := Color(0.62, 0.62, 0.66)
 

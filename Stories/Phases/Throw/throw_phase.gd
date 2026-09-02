@@ -16,8 +16,9 @@ var _timer_label: Label
 
 func _ready() -> void:
 	_rng.randomize()
-	# 中间的隔断要比人高，跳也翻不过去，只能抛物线越过
-	obstacles.append(Rect2(292, 202, 56, 98))
+	# 中间的教室门（127x255 按 0.40 缩放 = 51x102），比人高，跳也翻不过去，
+	# 只能把东西抛过门顶
+	obstacles.append(Rect2(294.5, 198, 51, 102))
 	setup_players(120.0, 520.0)
 	time_left = duration
 	_build_hud()
@@ -77,7 +78,7 @@ func _on_player_hit(victim: PlayerState, proj: Dictionary) -> void:
 		float_text(victim.pos + Vector2(0, -CHAR_H - 26.0), "+10", thrower.fig.color, 15)
 		_update_scores()
 	victim.vel = Vector2.ZERO
-	stun_player(victim, "晕!")
+	stun_player(victim)
 	shake(5.0, 0.3)
 
 
@@ -171,8 +172,9 @@ func _finish() -> void:
 
 func _draw_front() -> void:
 	for it in items:
-		# 快消失前闪烁提示
+		# 快消失前平滑地明暗呼吸，最后一段整体淡出，不做硬切
 		var alpha := 1.0
 		if it.rest > 2.0:
-			alpha = 0.4 if fmod(float(it.rest), 0.3) < 0.15 else 1.0
+			alpha = 0.45 + 0.55 * (0.5 + 0.5 * sin(float(it.rest) * 16.0))
+			alpha *= clampf((3.2 - float(it.rest)) / 0.5, 0.0, 1.0)
 		Art.draw_item(self, int(it.item), it.pos, 0.0, Color(1, 1, 1, alpha))
