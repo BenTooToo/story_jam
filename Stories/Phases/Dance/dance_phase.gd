@@ -81,7 +81,7 @@ func _make_side(idx: int) -> Dictionary:
 		xs = [66.0, 114.0, 162.0, 210.0] if idx == 0 else [430.0, 478.0, 526.0, 574.0],
 		keymap = {KEY_A: 0, KEY_S: 1, KEY_W: 2, KEY_D: 3} if idx == 0 \
 			else {KEY_LEFT: 0, KEY_DOWN: 1, KEY_UP: 2, KEY_RIGHT: 3},
-		note_color = Color(0.5, 0.85, 0.45) if idx == 0 else Color(0.92, 0.82, 0.35),
+		arrow_key = "绿箭头" if idx == 0 else "红箭头",
 		flash = [0.0, 0.0, 0.0, 0.0],
 		notes = [],
 		fig = null,
@@ -205,14 +205,15 @@ func _finish() -> void:
 
 func _draw_front() -> void:
 	for side in _sides:
-		# 判定线上的空心箭头
+		var key: String = side.arrow_key
+		# 判定线上的箭头压暗，打中时闪一下
 		for lane in 4:
 			var at := Vector2(float(side.xs[lane]), RECEPTOR_Y)
-			Art.draw_sprite(self, "箭头", at, 22.0, arrow_rot[lane], Color(0.5, 0.5, 0.55))
+			Art.draw_sprite(self, key, at, 26.0, arrow_rot[lane], Color(0.55, 0.55, 0.58))
 			if side.flash[lane] > 0.0:
 				Art.draw_sprite(
-					self, "箭头", at, 22.0, arrow_rot[lane],
-					Color(1, 1, 1, minf(side.flash[lane] * 3.0, 0.9)),
+					self, key, at, 26.0, arrow_rot[lane],
+					Color(1.8, 1.8, 1.8, minf(side.flash[lane] * 3.0, 1.0)),
 				)
 		# 往上滚的音符
 		for n in side.notes:
@@ -222,7 +223,7 @@ func _draw_front() -> void:
 			if y > NOTE_SPAWN_Y or y < 34.0:
 				continue
 			Art.draw_sprite(
-				self, "箭头",
-				Vector2(float(side.xs[int(n.lane)]), y), 22.0,
-				arrow_rot[int(n.lane)], side.note_color,
+				self, key,
+				Vector2(float(side.xs[int(n.lane)]), y), 26.0,
+				arrow_rot[int(n.lane)],
 			)

@@ -6,7 +6,7 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 @export var item_interval := 2.4
 
 var time_left := 0.0
-var items := []                # {pos, tier, landed, rest}
+var items := []                # {pos, item, tier, half_h, landed, rest}
 
 var _item_timer := 1.2
 var _score_left: Label
@@ -84,15 +84,24 @@ func _on_player_hit(victim: PlayerState, proj: Dictionary) -> void:
 # ---------- 掉落物品 ----------
 
 func _spawn_item() -> void:
+	# 越大的东西越少见：文具最多，马桶凳子最少
 	var roll := _rng.randf()
 	var tier := 1
 	if roll > 0.85:
 		tier = 5
 	elif roll > 0.55:
 		tier = 3
+	var index := Art.random_item(_rng, tier)
 	# 障碍物顶上落不到，只在两侧半场掉
 	var x := _rng.randf_range(40.0, 250.0) if _rng.randf() < 0.5 else _rng.randf_range(390.0, 600.0)
-	items.append({pos = Vector2(x, -12.0), tier = tier, landed = false, rest = 0.0})
+	items.append({
+		pos = Vector2(x, -20.0),
+		item = index,
+		tier = tier,
+		half_h = Art.item_screen_size(index).y * 0.5,
+		landed = false,
+		rest = 0.0,
+	})
 
 
 func _step_items(delta: float) -> void:
@@ -101,8 +110,10 @@ func _step_items(delta: float) -> void:
 		var it: Dictionary = items[i]
 		if not it.landed:
 			it.pos = it.pos + Vector2(0.0, 95.0 * delta)
-			if it.pos.y >= GROUND_Y - 4.0:
-				it.pos = Vector2(it.pos.x, GROUND_Y - 4.0)
+			# 按各自的高度停在地面上，别半截埋进地里
+			var rest_y: float = GROUND_Y + 1.0 - float(it.half_h)
+			if it.pos.y >= rest_y:
+				it.pos = Vector2(it.pos.x, rest_y)
 				it.landed = true
 		else:
 			it.rest += delta
@@ -110,7 +121,9 @@ func _step_items(delta: float) -> void:
 		for p in players:
 			if p.stun > 0.0:
 				continue
-			if (p.pos + Vector2(0, -CHAR_H * 0.5)).distance_to(it.pos) < 26.0:
+			# 东西越大越容易碰到
+			var reach: float = 20.0 + float(it.half_h) * 0.6
+			if (p.pos + Vector2(0, -CHAR_H * 0.5)).distance_to(it.pos) < reach:
 				p.score += int(it.tier)
 				float_text(it.pos + Vector2(0, -10), "+%d" % int(it.tier), p.fig.color, 13)
 				Sfx.play(self, Sfx.blip(880.0, 1318.0, 0.09, 0.3))
@@ -162,9 +175,4 @@ func _draw_front() -> void:
 		var alpha := 1.0
 		if it.rest > 2.0:
 			alpha = 0.4 if fmod(float(it.rest), 0.3) < 0.15 else 1.0
-		# 分值越高的素材画得越大，方便一眼看出该抢哪个
-		var height := 11.0 + int(it.tier) * 1.6
-		Art.draw_sprite(
-			self, "掉落%d分" % int(it.tier), it.pos, height, 0.0,
-			Color(1, 1, 1, alpha),
-		)
+		Art.draw_item(self, int(it.item), it.pos, 0.0, Color(1, 1, 1, alpha))

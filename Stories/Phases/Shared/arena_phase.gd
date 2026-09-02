@@ -22,6 +22,8 @@ const MOVE_SPEED := 155.0
 const JUMP_VELOCITY := -330.0
 const STUN_TIME := 2.0
 const THROW_COOLDOWN := 0.65
+## 挥臂到出手的间隔，对准"扔东西"动作表的第 3 帧
+const THROW_RELEASE := 0.16
 const CHAR_HALF_W := 11.0
 const CHAR_H := 82.0
 const SHOULDER_Y := -62.0
@@ -38,6 +40,7 @@ class PlayerState:
 	var on_ground := true
 	var stun := 0.0
 	var cooldown := 0.0
+	var throw_timer := -1.0   # >0 表示正在挥臂，归零那一刻才真的出手
 	var score := 0
 	var keys := {}
 
@@ -46,7 +49,7 @@ class PlayerState:
 @export var show_missing_art := false
 
 var players := []
-var projectiles := []          # {pos, vel, from, kind, rot, spin}
+var projectiles := []          # {pos, vel, from, item, rot, spin}
 var pops := []                 # 命中 / 消失时的小圆圈特效 {pos, t}
 var obstacles: Array[Rect2] = []
 var draw_obstacle_blocks := true
@@ -157,6 +160,10 @@ func player_rect(p: PlayerState) -> Rect2:
 
 func update_player(p: PlayerState, delta: float) -> void:
 	p.cooldown = maxf(p.cooldown - delta, 0.0)
+	if p.throw_timer > 0.0:
+		p.throw_timer -= delta
+		if p.throw_timer <= 0.0:
+			_release_throw(p)
 	if p.stun > 0.0:
 		p.stun -= delta
 		if p.stun <= 0.0:
@@ -211,22 +218,32 @@ func stun_player(p: PlayerState, hint := "晕!") -> void:
 
 # ---------- 投掷物 ----------
 
+## 按下投掷键：先播挥臂动画，THROW_RELEASE 秒后才真的把东西扔出去
 func throw_from(p: PlayerState) -> void:
 	p.cooldown = THROW_COOLDOWN
+	p.throw_timer = THROW_RELEASE
 	var target_x := throw_target_x(p)
 	p.fig.facing = 1 if target_x > p.pos.x else -1
-	p.fig.strike(CharSprite.Pose.THROW, 0.3)
+	p.fig.strike(CharSprite.Pose.THROW, 0.42)
+	Sfx.play(self, Sfx.blip(340.0, 190.0, 0.09, 0.3), -8.0)
+
+
+## 挥臂到位，东西真正脱手
+func _release_throw(p: PlayerState) -> void:
+	p.throw_timer = -1.0
+	var target_x := throw_target_x(p)
 	var vx := (target_x - p.pos.x) / PROJ_FLIGHT + _rng.randf_range(-26.0, 26.0)
 	var vy := -PROJ_GRAVITY * PROJ_FLIGHT * 0.5 - 24.0
+	# 抓到什么扔什么，马桶凳子都能上
+	var index := Art.random_item(_rng)
 	projectiles.append({
 		pos = p.pos + Vector2(p.fig.facing * 14.0, SHOULDER_Y),
 		vel = Vector2(vx, vy),
 		from = p.id,
-		kind = _rng.randi_range(0, 2),
+		item = index,
 		rot = 0.0,
-		spin = _rng.randf_range(-8.0, 8.0),
+		spin = _rng.randf_range(-7.0, 7.0),
 	})
-	Sfx.play(self, Sfx.blip(340.0, 190.0, 0.09, 0.3), -8.0)
 
 
 func step_projectiles(delta: float) -> void:
@@ -357,4 +374,4 @@ func _draw() -> void:
 
 func _draw_projectiles() -> void:
 	for pr in projectiles:
-		Art.draw_sprite(self, "投掷物%d" % (int(pr.kind) + 1), pr.pos, 12.0, pr.rot)
+		Art.draw_item(self, int(pr.item), pr.pos, pr.rot)
