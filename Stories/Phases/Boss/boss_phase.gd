@@ -12,7 +12,7 @@ const BOSS_TINT := Color(0.58, 0.56, 0.62)
 var boss_hp := 0
 var boss_alive := true
 var waves := []                # 地面冲击波 {x, dir, puff}
-var boss_projs := []           # 怪兽抓起来砸回去的东西 {pos, vel, item, rot}
+var boss_projs := []           # 怪兽抓起来砸回去的东西 {pos, vel, grav, item, rot}
 
 var _boss_rect := Rect2()
 var _boss_sprite: Sprite2D
@@ -128,11 +128,12 @@ func _do_attack() -> void:
 		for p in players:
 			var start := Vector2(320.0, _boss_rect.position.y + _boss_rect.size.y * 0.35)
 			var land_x: float = clampf(p.pos.x + _rng.randf_range(-14.0, 14.0), ARENA_LEFT, ARENA_RIGHT)
-			var vx := (land_x - start.x) / 1.0
-			var vy := ((GROUND_Y - start.y) - 0.5 * PROJ_GRAVITY * 1.0) / 1.0
+			# 和玩家一样：飞行时间固定、精确落点，弧线高低由每发自己的重力决定
+			var arc := solve_arc(start, Vector2(land_x, GROUND_Y - 6.0))
 			boss_projs.append({
 				pos = start,
-				vel = Vector2(vx, vy),
+				vel = arc.vel,
+				grav = arc.grav,
 				item = Art.random_item(_rng, 5),
 				rot = 0.0,
 			})
@@ -163,7 +164,7 @@ func _step_boss_projs(delta: float) -> void:
 	var i := boss_projs.size() - 1
 	while i >= 0:
 		var bp: Dictionary = boss_projs[i]
-		bp.vel = bp.vel + Vector2(0.0, PROJ_GRAVITY * delta)
+		bp.vel = bp.vel + Vector2(0.0, float(bp.grav) * delta)
 		bp.pos = bp.pos + bp.vel * delta
 		bp.rot = float(bp.rot) + 5.0 * delta
 		var dead: bool = bp.pos.y > GROUND_Y

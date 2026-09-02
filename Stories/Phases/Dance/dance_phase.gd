@@ -28,18 +28,31 @@ const MUSIC_PATH := "res://Assets/Branch/可爱的小曲.wav"
 const MUSIC_DIR := "res://Assets/Branch/"
 const MUSIC_EXTS := ["ogg", "wav", "mp3"]
 
-## 谱面按曲子的段落铺：主歌 1-16、副歌 17-32、过渡 33-40、第二次副歌 41-56。
-## step = 每几拍放一个音符（0 = 这段不放音符）；eighth = 额外插半拍切分的概率。
-## bars 加起来必须正好是 BARS。副歌踩满四分音符——跟着鼓点拍最顺手，
-## 难度靠切分给，不靠堆密度。
+## 谱面用"图案"拼，不是随机撒点。
+## 一个图案 = 一小节 4 拍的方向序列（相对根方向的偏移，0=根，1=根的下一个……）。
+## 同一个图案会连着重复 phrase 小节再换——重复才好记、好跟，
+## 也是"频率加上去但难度不加上去"的办法：4 个一样的箭头连着按，密但不难。
+const PATTERNS := {
+	"连打": [0, 0, 0, 0],   # 同一个方向连按四下，最好跟
+	"两两": [0, 0, 1, 1],   # 两下一换
+	"交替": [0, 1, 0, 1],   # 两个方向来回
+	"扫过": [0, 1, 2, 3],   # 四个方向扫一遍
+}
+
+## 段落跟着曲式：主歌 1-16、副歌 17-32、过渡 33-40、第二次副歌 41-56。
+## per_bar = 每小节几个音符（2 = 只打第 1、3 拍；4 = 每拍都打）
+## patterns = 这段允许哪几种图案；phrase = 同一个图案连续几小节再换
+## bars 合计必须正好是 BARS。全部音符都在正拍上，没有八分切分。
 const SECTIONS := [
-	{bars = 2, step = 0.0, eighth = 0.0},    # 1-2   开头留两小节，第一个音符才有滚进来的时间
-	{bars = 6, step = 2.0, eighth = 0.0},    # 3-8   主歌前半，两拍一个，先热身
-	{bars = 8, step = 2.0, eighth = 0.2},    # 9-16  主歌后半，开始加切分
-	{bars = 16, step = 1.0, eighth = 0.15},  # 17-32 副歌，踩满四分
-	{bars = 8, step = 2.0, eighth = 0.1},    # 33-40 过渡，收一收喘口气
-	{bars = 16, step = 1.0, eighth = 0.3},   # 41-56 第二次副歌，切分最多
+	{bars = 16, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌：最简单
+	{bars = 16, per_bar = 4, patterns = ["连打", "两两"], phrase = 4},                  # 副歌：密但只有连打和两两
+	{bars = 8, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                   # 过渡：喘口气，开始有交替
+	{bars = 16, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 副歌2：图案最全、换得最勤
 ]
+
+## 前奏打几拍节拍再起曲子。第一个箭头正好在第 0 拍到判定线，曲子也在那一刻响。
+const LEAD_IN_BEATS := 8
+const LEAD_IN := BEAT * LEAD_IN_BEATS
 
 ## 曲子里第几秒对上谱面的第 1 小节第 1 拍。
 ## 分析过 可爱的小曲.wav：0 秒就出声，起音全落在 0.4 秒的网格上，所以是 0。
@@ -61,7 +74,9 @@ var _elapsed := 0.0            # 谱面时间轴，0 = 第 1 小节第 1 拍
 var _next_beat := 0.0
 var _last_note_time := 0.0
 var _music: AudioStreamPlayer
+var _music_started := false
 var _finishing := false
+var _count_label: Label
 
 
 func _ready() -> void:
@@ -74,12 +89,45 @@ func _ready() -> void:
 
 
 func _start() -> void:
-	# 曲子和倒计时一起开始：倒计时正好压在前 4 小节的前奏上，
-	# 数完 3-2-1 音符也快滚到判定线了，中间不用干等。
+	# 时间轴从 -LEAD_IN 开始走：前面 8 拍只打节拍、数 3-2-1，箭头先滚进来；
+	# 第一个箭头到判定线的那一刻（第 0 拍）曲子才响。
+	_elapsed = -LEAD_IN
+	_next_beat = -LEAD_IN
+	running = true
+
+
+## 前奏每一拍：打节拍音，隔一拍报一个数。
+func _count_in_beat(beat_time: float) -> void:
+	var idx := roundi(beat_time / BEAT)          # -8 … -1
+	var downbeat := posmod(idx, BEATS_PER_BAR) == 0
+	Sfx.play(self, Sfx.blip(1046.0 if downbeat else 740.0, 1000.0 if downbeat else 700.0, 0.045, 0.32))
+	match idx:
+		-8:
+			_show_count("3")
+		-6:
+			_show_count("2")
+		-4:
+			_show_count("1")
+		-2:
+			_show_count("开始!")
+
+
+func _show_count(text: String) -> void:
+	if _count_label == null:
+		_count_label = make_hud_label("", 0.0, 120.0, 640.0, 34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_count_label.text = text
+	_pulse_in(_count_label, 0.3 if text == "开始!" else 0.22)
+	if text == "开始!":
+		var out := _count_label.create_tween()
+		out.tween_interval(0.6)
+		out.tween_property(_count_label, "modulate:a", 0.0, 0.25)
+		out.tween_callback(_count_label.queue_free)
+
+
+func _start_music() -> void:
+	_music_started = true
 	if _music != null:
 		_music.play()
-	await run_countdown()
-	running = true
 
 
 # ---------- 音乐 ----------
@@ -134,31 +182,46 @@ func _chart_time() -> float:
 	return t - AudioServer.get_output_latency() - music_offset
 
 
-## 按 SECTIONS 把音符铺到 56 小节的格子上。固定种子，两边拿到的谱面完全一样。
+## 按 SECTIONS 把图案铺到 56 小节上。固定种子，两边拿到的谱面完全一样。
 func _build_chart() -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260902
 	var notes := []
 	var bar := 0
-	var prev := -1
+	var root := rng.randi_range(0, 3)
 	for sec: Dictionary in SECTIONS:
-		var step: float = float(sec.step)
-		for _b in int(sec.bars):
-			if step > 0.0:
-				var beat := 0.0
-				while beat < float(BEATS_PER_BAR):
-					var t := bar * BAR + beat * BEAT
-					prev = _pick_lane(rng, prev)
-					notes.append({time = t, lane = prev})
-					# 偶尔插一个半拍的切分，别整首都在正拍上
-					if rng.randf() < float(sec.eighth):
-						prev = _pick_lane(rng, prev)
-						notes.append({time = t + BEAT * 0.5, lane = prev})
-					beat += step
-			bar += 1
+		var per_bar: int = int(sec.per_bar)
+		var names: Array = sec.patterns
+		var phrase: int = int(sec.phrase)
+		var step_beats := float(BEATS_PER_BAR) / float(per_bar)
+		var b := 0
+		while b < int(sec.bars):
+			# 换一个图案、根方向和上一句错开，然后连着用 phrase 小节
+			var pname: String = names[rng.randi_range(0, names.size() - 1)]
+			var pat: Array = PATTERNS[pname]
+			# 半拍时只用图案的前两位，"两两"[0,0,1,1] 会退化成 [0,0]——
+			# 凡是这一小节里全是同一个方向的，都按"连打"处理：每 4 个音符换方向
+			var flat := true
+			for i in per_bar:
+				if int(pat[i]) != int(pat[0]):
+					flat = false
+			root = (root + rng.randi_range(1, 3)) % 4
+			var run: int = mini(phrase, int(sec.bars) - b)
+			var emitted := 0
+			for _k in run:
+				for i in per_bar:
+					# "连打"每 4 个音符换一个方向：要的是"4 个一样"，不是同一个键按 16 下
+					if flat and emitted > 0 and emitted % 4 == 0:
+						root = (root + rng.randi_range(1, 3)) % 4
+					notes.append({
+						time = bar * BAR + i * step_beats * BEAT,
+						lane = (root + int(pat[i])) % 4,
+					})
+					emitted += 1
+				bar += 1
+				b += 1
 	if bar != BARS:
 		push_warning("谱面小节数对不上：SECTIONS 合计 %d，应为 %d" % [bar, BARS])
-	notes.sort_custom(func(a, b): return float(a.time) < float(b.time))
 	_spread_lanes(notes)
 	_last_note_time = 0.0
 	for n in notes:
@@ -184,14 +247,6 @@ func _spread_lanes(notes: Array) -> void:
 			lane = best
 			n.lane = lane
 		lane_last[lane] = t
-
-
-## 尽量别连着两个同一个方向，跳起来才有左右上下的感觉。
-func _pick_lane(rng: RandomNumberGenerator, prev: int) -> int:
-	var lane := rng.randi_range(0, 3)
-	if lane == prev and rng.randf() < 0.7:
-		lane = (lane + rng.randi_range(1, 3)) % 4
-	return lane
 
 
 func _build_stage() -> void:
@@ -247,18 +302,25 @@ func phase_tick(delta: float) -> void:
 	for side in _sides:
 		for lane in 4:
 			side.flash[lane] = maxf(side.flash[lane] - delta * 3.0, 0.0)
-	# 时间轴在倒计时期间就要走，音符才能提前滚进画面；判定要等 running 才开始
-	if _music != null and _music.playing:
-		# 有曲子就以音频位置为准
-		_elapsed = _chart_time()
-	elif running:
-		_elapsed += delta
-		# 只有没曲子的时候才补代码生成的节拍音，免得和真曲子打架
-		while _next_beat <= _elapsed and _next_beat <= _last_note_time + 0.01:
-			Sfx.play(self, Sfx.blip(175.0, 165.0, 0.05, 0.2))
-			_next_beat += BEAT
 	if not running:
 		return
+	if _music_started and _music != null and _music.playing:
+		# 曲子响起之后，时间轴一律以音频位置为准
+		_elapsed = _chart_time()
+	else:
+		_elapsed += delta
+		if not _music_started:
+			# 前奏：打节拍、数拍子；第 0 拍第一个箭头到判定线，曲子响
+			while _next_beat <= _elapsed and _next_beat < 0.0:
+				_count_in_beat(_next_beat)
+				_next_beat += BEAT
+			if _elapsed >= 0.0:
+				_start_music()
+		if _music == null:
+			# 没曲子的时候整首都用节拍音顶着，方便不带音乐调玩法
+			while _next_beat <= _elapsed and _next_beat <= _last_note_time + 0.01:
+				Sfx.play(self, Sfx.blip(175.0, 165.0, 0.05, 0.2))
+				_next_beat += BEAT
 	for side in _sides:
 		for n in side.notes:
 			if not n.judged and _elapsed > float(n.time) + MISS_WINDOW:

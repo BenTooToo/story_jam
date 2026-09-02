@@ -17,8 +17,16 @@ const GROUND_Y := 300.0
 const ARENA_LEFT := 18.0
 const ARENA_RIGHT := 622.0
 const GRAVITY := 980.0
-const PROJ_GRAVITY := 420.0
-const PROJ_FLIGHT := 1.05
+const PROJ_FLIGHT := 1.05          # 飞行总时间固定，落点才可预测
+## 弧线最高点（相对出手点）。离门越近抛得越高，离得远就压平。
+const APEX_NEAR := 108.0           # 贴着门扔：几乎垂直吊过去
+const APEX_FAR := 46.0             # 离门很远：压平了甩过去
+const APEX_NEAR_DIST := 40.0
+const APEX_FAR_DIST := 240.0
+const OBSTACLE_CLEARANCE := 7.0    # 越过障碍物顶端至少留这么多余量
+## 离障碍物比这还近时，出手点抬到障碍物顶端之上（举过头顶甩）。
+## 不然从门边 2px 处固定 1.05 秒飞到对面，物理上根本升不过门沿，再大的重力都没用。
+const NEAR_LOB_DIST := 36.0
 const MOVE_SPEED := 155.0
 const JUMP_VELOCITY := -330.0
 const STUN_TIME := 2.0
@@ -50,7 +58,7 @@ class PlayerState:
 @export var show_missing_art := false
 
 var players := []
-var projectiles := []          # {pos, vel, from, item, rot, spin}
+var projectiles := []          # {pos, vel, grav, from, item, rot, spin}
 var obstacles: Array[Rect2] = []
 var draw_obstacle_blocks := true
 var controls_enabled := false
@@ -226,26 +234,113 @@ func throw_from(p: PlayerState) -> void:
 ## 挥臂到位，东西真正脱手
 func _release_throw(p: PlayerState) -> void:
 	p.throw_timer = -1.0
-	var target_x := throw_target_x(p)
-	var vx := (target_x - p.pos.x) / PROJ_FLIGHT + _rng.randf_range(-26.0, 26.0)
-	var vy := -PROJ_GRAVITY * PROJ_FLIGHT * 0.5 - 24.0
+	var from := p.pos + Vector2(p.fig.facing * 14.0, SHOULDER_Y)
+	var to := Vector2(throw_target_x(p), GROUND_Y - CHAR_H * 0.5)
+	for r in obstacles:
+		if not _is_between(r, p.pos.x, to.x):
+			continue
+		# 贴着门站时手会伸进门里，出手点先夹回门外
+		if from.x > r.position.x and from.x < r.end.x:
+			from.x = r.position.x - 2.0 if p.pos.x < r.get_center().x else r.end.x + 2.0
+		# 离门太近就举过头顶扔：起点直接放到门顶之上，近沿天然过得去，远沿只要个温和的弧
+		var edge_x := r.position.x if p.pos.x < r.get_center().x else r.end.x
+		if absf(edge_x - from.x) <= NEAR_LOB_DIST:
+			from.y = minf(from.y, r.position.y - OBSTACLE_CLEARANCE - 4.0)
+	var arc := solve_arc(from, to)
 	# 抓到什么扔什么，马桶凳子都能上
-	var index := Art.random_item(_rng)
 	projectiles.append({
-		pos = p.pos + Vector2(p.fig.facing * 14.0, SHOULDER_Y),
-		vel = Vector2(vx, vy),
+		pos = from,
+		vel = arc.vel,
+		grav = arc.grav,
 		from = p.id,
-		item = index,
+		item = Art.random_item(_rng),
 		rot = 0.0,
 		spin = _rng.randf_range(-7.0, 7.0),
 	})
+
+
+## 解一条抛物线：飞行时间固定成 PROJ_FLIGHT，落点精确落在 to。
+##
+## 关键在于——时间和起终点都定死之后，抛物线其实只剩一条，光改初速度是变不出
+## 高低不同的弧线的。所以这里改的是**每一发自己的重力**：时间不变 -> 落点一定准；
+## 重力越大，需要的初速就越大，弧线也就越高。
+##
+## 高度先按"离门多远"给（贴着门就得吊高，离得远就压平），再检查一遍能不能真的
+## 越过中间的障碍，不够就往上抬，所以一定扔得过去。
+func solve_arc(from: Vector2, to: Vector2) -> Dictionary:
+	var vx := (to.x - from.x) / PROJ_FLIGHT
+	var apex := _wanted_apex(from, to)
+	for _i in 14:
+		var g := _gravity_for_apex(apex, to.y - from.y)
+		var vy := ((to.y - from.y) - 0.5 * g * PROJ_FLIGHT * PROJ_FLIGHT) / PROJ_FLIGHT
+		if _clears_obstacles(from, to.x, vx, vy, g):
+			return {vel = Vector2(vx, vy), grav = g}
+		apex += 14.0
+	# 抬到头还是过不去（正常玩不到），就用最高的那条
+	var g_max := _gravity_for_apex(apex, to.y - from.y)
+	var vy_max := ((to.y - from.y) - 0.5 * g_max * PROJ_FLIGHT * PROJ_FLIGHT) / PROJ_FLIGHT
+	return {vel = Vector2(vx, vy_max), grav = g_max}
+
+
+## 想要的最高点：离最近的障碍物越近，抛得越高。
+func _wanted_apex(from: Vector2, to_x: Vector2) -> float:
+	var dist := 1e9
+	for r in obstacles:
+		if _is_between(r, from.x, to_x.x):
+			dist = minf(dist, absf(r.get_center().x - from.x))
+	if dist > 1e8:
+		# 中间没东西挡（比如打怪兽），按离目标的远近给个自然的弧度
+		dist = absf(to_x.x - from.x)
+	var k := clampf(
+		(dist - APEX_NEAR_DIST) / (APEX_FAR_DIST - APEX_NEAR_DIST), 0.0, 1.0
+	)
+	return lerpf(APEX_NEAR, APEX_FAR, k)
+
+
+## 由想要的最高点反解这一发的重力。
+## 推导：y(t) = vy·t + ½g·t²，落点约束给出 vy = (Δy - ½gT²)/T，
+## 最高点 h = vy²/(2g)。两式消去 vy 得 u² - 4(Δy+2h)·u + 4Δy² = 0（u = gT²），
+## 取大根即可；Δy = 0 时正好退化成 g = 8h/T²。
+func _gravity_for_apex(apex: float, dy: float) -> float:
+	var b := dy + 2.0 * apex
+	var disc := maxf(b * b - dy * dy, 0.0)
+	var u := 2.0 * b + 2.0 * sqrt(disc)
+	return maxf(u, 1.0) / (PROJ_FLIGHT * PROJ_FLIGHT)
+
+
+## 这个障碍物是不是夹在出手点和目标之间。
+## 目标本身落在障碍里的不算——打电梯怪兽就是要砸中它，不能绕过去；
+## 出手点在障碍里的也不算——怪兽从自己身体里往外扔，不会被自己挡住。
+func _is_between(r: Rect2, from_x: float, to_x: float) -> bool:
+	if to_x >= r.position.x and to_x <= r.end.x:
+		return false
+	if from_x >= r.position.x and from_x <= r.end.x:
+		return false
+	return r.end.x >= minf(from_x, to_x) and r.position.x <= maxf(from_x, to_x)
+
+
+## 这条弧线在障碍物的左右两个边缘处，是不是都在顶端之上。
+func _clears_obstacles(from: Vector2, to_x: float, vx: float, vy: float, g: float) -> bool:
+	if is_zero_approx(vx):
+		return true
+	for r in obstacles:
+		if not _is_between(r, from.x, to_x):
+			continue
+		for edge_x in [r.position.x, r.end.x]:
+			var t: float = (edge_x - from.x) / vx
+			if t <= 0.0 or t >= PROJ_FLIGHT:
+				continue
+			var y: float = from.y + vy * t + 0.5 * g * t * t
+			if y > r.position.y - OBSTACLE_CLEARANCE:
+				return false
+	return true
 
 
 func step_projectiles(delta: float) -> void:
 	var i := projectiles.size() - 1
 	while i >= 0:
 		var pr: Dictionary = projectiles[i]
-		pr.vel = pr.vel + Vector2(0.0, PROJ_GRAVITY * delta)
+		pr.vel = pr.vel + Vector2(0.0, float(pr.grav) * delta)
 		pr.pos = pr.pos + pr.vel * delta
 		pr.rot = pr.rot + pr.spin * delta
 		var dead := projectile_hit_test(pr)
