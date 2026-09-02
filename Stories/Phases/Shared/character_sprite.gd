@@ -27,6 +27,8 @@ const SHEETS := [
 	preload("res://Assets/Branch/新人物行走.png"),    # 2 行走：4 帧循环
 ]
 const FRAME_SIZE := 256.0
+## 鞋底下沿相对脚底原点往下沉多少（地板从 +1 开始，再多压 0.5 保险）
+const FOOT_SINK := 1.5
 ## 每张表每一行每一帧脚底所在的行（量素材得到）。
 ## 姿势类（跳舞 / 投掷）按帧对齐，每个姿势都正好站在地上；
 ## 行走类是循环动画，腾空帧本来就该离地，统一用触地帧的那一行，免得跑起来上下抖。
@@ -175,5 +177,10 @@ func _refresh() -> void:
 	var s := char_scale
 	var foot_y: float = FOOT_ROWS[int(clip.sheet)][row][frame]
 	_body.scale = Vector2(s * face, s * breathe)
-	# 把素材里的胯部中轴和落脚线搬到本节点原点上
-	_body.position = Vector2(-PIVOT[row] * s * face, -foot_y * s * breathe + lift)
+	# 把素材里的胯部中轴搬到原点；纵向让"脚底那一行的下沿"落在 FOOT_SINK：
+	# 反光地板从 GROUND_Y+1 开始、画在人物之上，鞋底故意沉进去半像素，
+	# 这样不管亚像素怎么舍入，脚和地板之间都不可能再露出一条底色。
+	_body.position = Vector2(
+		-PIVOT[row] * s * face,
+		FOOT_SINK - (foot_y + 1.0) * s * breathe + lift,
+	)
