@@ -11,6 +11,7 @@ const Fx := preload("res://Stories/Phases/Shared/phase_fx.gd")
 const Sfx := preload("res://Stories/Phases/Shared/retro_sfx.gd")
 const CanvasProxy := preload("res://Stories/Phases/Shared/canvas_proxy.gd")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
+const FLOOR_SHADER := preload("res://Assets/Theme/water.gdshader")
 const SFX_CLANK := preload("res://Assets/Sound Effects/哐当.mp3")
 
 const GROUND_Y := 300.0
@@ -57,6 +58,9 @@ class PlayerState:
 ## 打开后在左上角列出还没到货的素材，方便对着清单催素材
 @export var show_missing_art := false
 
+## 背景底色。子类可以按拍子改它，让整个画面跟着呼吸
+var bg_color := Color(0.055, 0.055, 0.075)
+
 var players := []
 var projectiles := []          # {pos, vel, grav, from, item, rot, spin}
 var obstacles: Array[Rect2] = []
@@ -72,8 +76,40 @@ var _hud: CanvasLayer
 
 
 func _enter_tree() -> void:
-	# 子类各自实现 _ready，这里用延后调用挂缺素材清单，省得三个阶段各写一遍
+	# 子类各自实现 _ready，这里用延后调用挂公共的东西，省得三个阶段各写一遍
+	call_deferred("_setup_floor")
 	call_deferred("_setup_missing_art_hud")
+
+
+## 电梯场景那块反光地板，三个阶段都铺上。
+## 它用 screen_texture 把上面的画面倒映下来，所以要在人物之后画：
+## 靠 z_index = 5 排在所有默认层（人物 / 物品 / 粒子）之后、HUD 之前。
+func _setup_floor() -> void:
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.008
+	var noise_tex := NoiseTexture2D.new()
+	noise_tex.noise = noise
+	noise_tex.seamless = true
+	var mat := ShaderMaterial.new()
+	mat.shader = FLOOR_SHADER
+	mat.set_shader_parameter("wave_noise", noise_tex)
+	mat.set_shader_parameter("floor_tint", Color(0.75, 0.39, 0.34))
+	mat.set_shader_parameter("tint_amount", 0.6)
+	mat.set_shader_parameter("depth_dim", 0.35)
+	mat.set_shader_parameter("perspective", 0.35)
+	mat.set_shader_parameter("reflection_strength", 0.45)
+	mat.set_shader_parameter("reflection_falloff", 2.5)
+	mat.set_shader_parameter("blur_depth", 2.0)
+	mat.set_shader_parameter("fade", 1.0)
+	var floor_rect := ColorRect.new()
+	floor_rect.name = "Floor"
+	floor_rect.material = mat
+	floor_rect.position = Vector2(0.0, GROUND_Y + 5.0)
+	floor_rect.size = Vector2(640.0, 130.0)
+	floor_rect.color = Color.BLACK
+	floor_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor_rect.z_index = 5
+	add_child(floor_rect)
 
 
 func _setup_missing_art_hud() -> void:
@@ -213,7 +249,10 @@ func update_player(p: PlayerState, delta: float) -> void:
 func stun_player(p: PlayerState, hint := "!") -> void:
 	p.stun = STUN_TIME
 	p.fig.set_stunned(true)
-	Sfx.play(self, SFX_CLANK, -6.0, _rng.randf_range(0.9, 1.15))
+	Sfx.play(self, SFX_CLANK, -10.0, _rng.randf_range(0.9, 1.15))
+	var voice := Art.hurt_sound(int(p.fig.character), _rng)
+	if voice != null:
+		Sfx.play(self, voice, 0.0, _rng.randf_range(0.96, 1.04))
 	shake(4.0, 0.25)
 	Fx.hit_burst(self, p.pos + Vector2(0, -CHAR_H * 0.6), Color(1.0, 0.86, 0.45), 22, 1.25)
 	Fx.pop_text(self, p.pos + Vector2(0, -CHAR_H - 16.0), hint, Color(1.0, 0.85, 0.3), 22, 0.45)
@@ -450,7 +489,7 @@ func run_countdown() -> void:
 # ---------- 绘制 ----------
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, 640, 360), Color(0.055, 0.055, 0.075))
+	draw_rect(Rect2(0, 0, 640, 360), bg_color)
 	_draw_back()
 	draw_line(Vector2(0, GROUND_Y + 3.0), Vector2(640, GROUND_Y + 3.0), Color(0.85, 0.82, 0.72), 4.0, true)
 	if draw_obstacle_blocks:

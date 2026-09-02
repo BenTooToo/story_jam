@@ -166,8 +166,29 @@ func _finish() -> void:
 			p.fig.strike(CharSprite.Pose.MISS, 2.4)
 	show_banner(text, color)
 	Sfx.play(self, Sfx.blip(523.0, 784.0, 0.35, 0.4))
-	await get_tree().create_timer(2.4).timeout
+	# 不管谁输谁赢都放这段哭，太好笑了。46 秒太长，只放开头，然后渐弱退出
+	var wait := 2.4
+	if _play_cry():
+		wait = 5.4
+	await get_tree().create_timer(wait).timeout
 	phase_finished.emit({p1 = p1.score, p2 = p2.score, winner = winner})
+
+
+## 放 cry.mp3 的开头：全音量 3 秒，再用 2.4 秒淡到听不见然后清掉。
+func _play_cry() -> bool:
+	var stream := Art.sound("cry")
+	if stream == null:
+		return false
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	add_child(player)
+	player.play()
+	var tw := create_tween()
+	tw.tween_interval(3.0)
+	tw.tween_property(player, "volume_db", -40.0, 2.4) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(player.queue_free)
+	return true
 
 
 func _draw_front() -> void:

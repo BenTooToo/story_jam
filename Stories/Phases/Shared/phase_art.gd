@@ -41,6 +41,16 @@ const PATHS := {
 	"怪兽": {path = "res://Assets/Branch/电梯怪兽.png", rect = Rect2()},
 }
 ## 命中迸溅、眩晕、冲击波、落点预警都改用粒子 + 文字了，见 phase_fx.gd，不再需要贴图。
+
+## 音效。和贴图一样按 key 取，文件不在就返回 null、调用方静默跳过。
+## 被砸中：女的在 girl_hurt1/2 里随机挑一个，男的只有 man_hurt。
+## cry 是阶段一结束时放的哭声，不分输赢，只放开头几秒再淡出。
+const SOUNDS := {
+	"girl_hurt1": "res://Assets/Branch/girl_hurt1.wav",
+	"girl_hurt2": "res://Assets/Branch/girl_hurt2.wav",
+	"man_hurt": "res://Assets/Branch/man_hurt.mp3",
+	"cry": "res://Assets/Branch/cry.mp3",
+}
 ## 占位统一用这个灰，方便一眼看出"这里还缺素材"
 const PLACEHOLDER := Color(0.62, 0.62, 0.66)
 
@@ -117,6 +127,27 @@ static func draw_in_rect(cv: CanvasItem, key: String, rect: Rect2, modulate := C
 		cv.draw_rect(rect, PLACEHOLDER * modulate)
 		return
 	cv.draw_texture_rect_region(t, rect, _content_rect(t, PATHS[key].rect), modulate)
+
+
+# ---------- 音效 ----------
+
+static func sound(key: String) -> AudioStream:
+	var ck := "snd:" + key
+	if _cache.has(ck):
+		return _cache[ck]
+	var result: AudioStream = null
+	var path: String = SOUNDS.get(key, "")
+	if path != "" and ResourceLoader.exists(path):
+		result = load(path)
+	_cache[ck] = result
+	return result
+
+
+## 被砸中的叫声：按角色挑，女的两条随机、男的一条。
+static func hurt_sound(character: int, rng: RandomNumberGenerator) -> AudioStream:
+	if character == 0:
+		return sound("girl_hurt1" if rng.randf() < 0.5 else "girl_hurt2")
+	return sound("man_hurt")
 
 
 # ---------- 物品 ----------

@@ -6,6 +6,9 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 ## 没有曲子时回退到代码生成的节拍音，方便单独调玩法。
 
 const ELEVATOR_TEX := preload("res://Assets/Edited/电梯箱.png")
+const SHAFT_SHADER := preload("res://Assets/Theme/light_shafts.gdshader")
+## 副歌段光柱打满，主歌 / 过渡收一点
+const CHORUS_BARS := [[16, 32], [40, 56]]
 
 const BEAT := 60.0 / 150.0           # 150 BPM -> 一拍 0.4 秒
 const BEATS_PER_BAR := 4             # 4/4
@@ -77,6 +80,9 @@ var _elapsed := 0.0            # 谱面时间轴，0 = 第 1 小节第 1 拍
 var _next_beat := 0.0
 var _last_note_time := 0.0
 var _music: AudioStreamPlayer
+var _disco: Array[ShaderMaterial] = []   # 两层交叉的光柱
+var _last_beat := -1
+const BG_BASE := Color(0.055, 0.055, 0.075)
 var _music_started := false
 var _finishing := false
 var _count_label: Label
@@ -86,6 +92,7 @@ func _ready() -> void:
 	draw_obstacle_blocks = false
 	_chart = _build_chart()
 	_build_stage()
+	_build_disco()
 	_setup_music()
 	_sides = [_make_side(0), _make_side(1)]
 	_start()
@@ -263,6 +270,82 @@ func _build_stage() -> void:
 	add_child(sprite)
 
 
+## 迪斯科灯：两层 light_shafts 交叉打，颜色每小节换、强度每拍冲一下、角度慢慢扫。
+## 铺在人物上面（z 3），又在反光地板下面（z 5），所以地板会把光柱倒映出来。
+func _build_disco() -> void:
+	for i in 2:
+		var mat := ShaderMaterial.new()
+		mat.shader = SHAFT_SHADER
+		mat.set_shader_parameter("beam_count", 4)
+		mat.set_shader_parameter("beam_pos_a", -0.28 + i * 0.1)
+		mat.set_shader_parameter("beam_pos_b", 0.18 - i * 0.1)
+		mat.set_shader_parameter("spread", 1.4)
+		mat.set_shader_parameter("seed", 3.0 + i * 5.0)
+		mat.set_shader_parameter("shaft_w", 0.07)
+		mat.set_shader_parameter("sway", 0.03)
+		mat.set_shader_parameter("sway_speed", 0.6)
+		mat.set_shader_parameter("fade_start", -0.2)
+		mat.set_shader_parameter("fade_end", 1.3)
+		mat.set_shader_parameter("dust_amount", 0.35)
+		mat.set_shader_parameter("dust_scale", 26.0)
+		mat.set_shader_parameter("dust_speed", 0.2)
+		mat.set_shader_parameter("pulse_amount", 0.0)
+		mat.set_shader_parameter("intensity", 0.0)
+		mat.set_shader_parameter("aspect", Vector2(1.7778, 1.0))
+		mat.set_shader_parameter("clip_enable", 0.0)
+		mat.set_shader_parameter("angle_deg", -30.0 + i * 60.0)
+		var rect := ColorRect.new()
+		rect.name = "Disco%d" % i
+		rect.material = mat
+		rect.size = Vector2(640.0, 360.0)
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rect.z_index = 3
+		add_child(rect)
+		_disco.append(mat)
+
+
+func _in_chorus(bar: int) -> bool:
+	for r in CHORUS_BARS:
+		if bar >= int(r[0]) and bar < int(r[1]):
+			return true
+	return false
+
+
+## 每帧按谱面时钟驱动灯光和人物的律动。
+func _drive_disco(delta: float) -> void:
+	var t := _elapsed
+	var beat_pos := t / BEAT
+	var frac := beat_pos - floorf(beat_pos)
+	var bar := int(floorf(t / BAR))
+	# 起曲前灯只留一点底光，不抢倒计时
+	var started := _music_started and t >= 0.0
+	var energy := 1.0 if _in_chorus(bar) else 0.6
+	var kick := exp(-frac * 5.0) if started else 0.0
+	for i in _disco.size():
+		var mat := _disco[i]
+		var hue := fmod(float(bar) * 0.17 + float(i) * 0.5, 1.0)
+		var col := Color.from_hsv(hue, 0.75, 1.0)
+		mat.set_shader_parameter("light_color", col)
+		var base := 0.22 if started else 0.12
+		mat.set_shader_parameter("intensity", (base + 0.85 * kick) * energy)
+		var ang := (-30.0 + i * 60.0) + 24.0 * sin(t * 0.7 + i * PI)
+		mat.set_shader_parameter("angle_deg", ang)
+	# 背景跟着拍子染一点当前色，整个画面一起呼吸
+	if started:
+		var tint := Color.from_hsv(fmod(float(bar) * 0.17, 1.0), 0.6, 0.35)
+		bg_color = BG_BASE.lerp(tint, 0.35 * kick * energy)
+	else:
+		bg_color = BG_BASE
+	# 人物：每拍小幅点头，打中时弹一下并闪白
+	for side in _sides:
+		side.punch = maxf(float(side.punch) - delta * 4.5, 0.0)
+		var fig: Node2D = side.fig
+		var sc := 1.0 + 0.045 * kick + 0.16 * float(side.punch)
+		fig.scale = Vector2(sc, sc)
+		var w := 1.0 + 0.9 * float(side.punch)
+		fig.modulate = Color(w, w, w)
+
+
 func _make_side(idx: int) -> Dictionary:
 	var side := {
 		score = 0,
@@ -273,6 +356,7 @@ func _make_side(idx: int) -> Dictionary:
 			else {KEY_LEFT: 0, KEY_DOWN: 1, KEY_UP: 2, KEY_RIGHT: 3},
 		arrow_key = "绿箭头" if idx == 0 else "红箭头",
 		flash = [0.0, 0.0, 0.0, 0.0],
+		punch = 0.0,          # 打中后的弹跳量，每帧衰减
 		notes = [],
 		fig = null,
 		label = null,
@@ -305,6 +389,7 @@ func phase_tick(delta: float) -> void:
 	for side in _sides:
 		for lane in 4:
 			side.flash[lane] = maxf(side.flash[lane] - delta * 3.0, 0.0)
+	_drive_disco(delta)
 	if not running:
 		return
 	if _music_started and _music != null and _music.playing:
@@ -373,12 +458,17 @@ func _judge(side: Dictionary, lane: int) -> void:
 		return
 	best.judged = true
 	var d := absf(best_dt)
+	side.punch = 1.0
+	var fig_pos: Vector2 = side.fig.position
+	var burst_col := Color(0.5, 0.9, 0.45) if side.arrow_key == "绿箭头" else Color(1.0, 0.45, 0.35)
 	if d <= PERFECT_WINDOW:
+		Fx.hit_burst(self, fig_pos + Vector2(0, -58), burst_col, 18, 1.1)
 		side.score += 5
 		side.combo += 1
 		_popup(side, lane, "完美!", Color(1.0, 0.85, 0.3))
 		Sfx.play(self, Sfx.blip(1046.0, 1200.0, 0.08, 0.3))
 	elif d <= GOOD_WINDOW:
+		Fx.hit_burst(self, fig_pos + Vector2(0, -58), burst_col, 10, 0.7)
 		side.score += 2
 		side.combo += 1
 		_popup(side, lane, "还行", Color(0.55, 0.85, 0.5))
