@@ -659,6 +659,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		for side in _sides:
+			if side.get("ai", false):
+				continue   # 电脑那边的键人按了不算，别帮它也别坑它
 			if side.keymap.has(event.physical_keycode):
 				_judge(side, int(side.keymap[event.physical_keycode]))
 
