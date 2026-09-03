@@ -1,11 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cyg3pbg5u85eb"]
 
-[ext_resource type="Texture2D" uid="uid://bhndsgqh7d5ne" path="res://Assets/Edited/电梯箱.png" id="1_hnpdv"]
+[ext_resource type="Texture2D" uid="uid://bhndsgqh7d5ne" path="res://Assets/envirment/电梯/电梯箱.png" id="1_hnpdv"]
 [ext_resource type="Script" uid="uid://b8qxweylo5w05" path="res://Stories/Start/start.gd" id="1_start"]
-[ext_resource type="Texture2D" uid="uid://caju7k314185s" path="res://Assets/Edited/电梯左门.png" id="2_g35lk"]
-[ext_resource type="Texture2D" uid="uid://3irj5cgltib1" path="res://Assets/Prof. Gao/npc standing.png" id="2_xvhka"]
-[ext_resource type="Texture2D" uid="uid://crirmww3pi201" path="res://Assets/Edited/电梯右门.png" id="3_xvhka"]
-[ext_resource type="Texture2D" uid="uid://cb18qg7fsygq" path="res://Assets/Edited/数字面板.png" id="5_ajomx"]
+[ext_resource type="Texture2D" uid="uid://caju7k314185s" path="res://Assets/envirment/电梯/电梯左门.png" id="2_g35lk"]
+[ext_resource type="Texture2D" uid="uid://3irj5cgltib1" path="res://Assets/caracter/npc standing.png" id="2_xvhka"]
+[ext_resource type="Texture2D" uid="uid://crirmww3pi201" path="res://Assets/envirment/电梯/电梯右门.png" id="3_xvhka"]
+[ext_resource type="Texture2D" uid="uid://cb18qg7fsygq" path="res://Assets/envirment/电梯/数字面板.png" id="5_ajomx"]
 [ext_resource type="Shader" uid="uid://xu6do67e1gws" path="res://Assets/Theme/water.gdshader" id="5_nrv0d"]
 [ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="6_nrv0d"]
 [ext_resource type="AudioStream" uid="uid://c7mofl7i6l3km" path="res://Assets/Sound Effects/电梯到达.mp3" id="7_arrive"]
@@ -44,7 +44,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_1ogsl")
 }],
-"loop": true,
+"loop": 1,
 "name": &"default",
 "speed": 6.0
 }]
