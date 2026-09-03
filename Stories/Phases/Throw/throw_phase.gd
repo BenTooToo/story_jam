@@ -18,6 +18,7 @@ var _timer_label: Label
 
 func _ready() -> void:
 	_rng.randomize()
+	floor_tint = Color(0.36, 0.46, 0.85)   # 扔东西阶段地板是蓝的
 	# 中间的教室门（127x255 按 0.40 缩放 = 51x102），比人高，跳也翻不过去，
 	# 只能把东西抛过门顶
 	obstacles.append(Rect2(294.5, 198, 51, 102))
@@ -66,7 +67,7 @@ func throw_target_x(p: PlayerState) -> float:
 
 func projectile_hit_test(proj: Dictionary) -> bool:
 	for p in players:
-		if p.id == int(proj.from) or p.stun > 0.0:
+		if p.id == int(proj.from) or not can_be_stunned(p):
 			continue
 		if player_rect(p).has_point(proj.pos):
 			_on_player_hit(p, proj)

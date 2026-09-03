@@ -9,6 +9,7 @@ const BOSS_TINT := Color(0.58, 0.56, 0.62)
 const BGM := "res://Assets/Music/番剧之歌.mp3"
 ## 冲击波贴地速度。玩家离波起点约 200px，140 给 1.5 秒左右的反应时间
 const WAVE_SPEED := 140.0
+const ARROW_POP_TIME := 0.2        # 冲击波箭头从地里弹出来的时间
 
 ## 每次砸中扣 3，150 血两个人合力大约要砸 50 下
 @export var boss_hp_max := 150
@@ -28,6 +29,7 @@ var _attack_kind := 0
 
 func _ready() -> void:
 	_rng.randomize()
+	floor_tint = Color(0.75, 0.39, 0.34)   # 怪兽阶段地板是红的
 	draw_obstacle_blocks = false
 	boss_hp = boss_hp_max
 	setup_players(90.0, 550.0)
@@ -165,8 +167,8 @@ func _do_attack() -> void:
 		# 震地：两道沿地面扩散的冲击波，跳起躲开
 		Sfx.play(self, SFX_CLANK, -4.0, 0.7)
 		shake(6.0, 0.35)
-		waves.append({x = 320.0 - 50.0, dir = -1.0, puff = 0.0})
-		waves.append({x = 320.0 + 50.0, dir = 1.0, puff = 0.0})
+		waves.append({x = 320.0 - 50.0, dir = -1.0, puff = 0.0, age = 0.0})
+		waves.append({x = 320.0 + 50.0, dir = 1.0, puff = 0.0, age = 0.0})
 	else:
 		# 砸东西：抓起水桶凳子马桶之类朝玩家扔，落点先亮感叹号
 		Sfx.play(self, Sfx.blip(140.0, 320.0, 0.2, 0.35))
@@ -194,6 +196,7 @@ func _step_waves(delta: float) -> void:
 		var w: Dictionary = waves[i]
 		w.x = float(w.x) + float(w.dir) * WAVE_SPEED * delta
 		w.puff = float(w.puff) - delta
+		w.age = float(w.age) + delta
 		if float(w.puff) <= 0.0:
 			w.puff = 0.055
 			Fx.ground_dust(self, Vector2(float(w.x), GROUND_Y - 2.0))
@@ -201,7 +204,7 @@ func _step_waves(delta: float) -> void:
 			waves.remove_at(i)
 		else:
 			for p in players:
-				if p.stun <= 0.0 and p.on_ground and absf(p.pos.x - float(w.x)) < 13.0:
+				if can_be_stunned(p) and p.on_ground and absf(p.pos.x - float(w.x)) < 13.0:
 					stun_player(p)
 		i -= 1
 
@@ -216,7 +219,7 @@ func _step_boss_projs(delta: float) -> void:
 		var dead: bool = bp.pos.y > GROUND_Y
 		if not dead:
 			for p in players:
-				if p.stun <= 0.0 and player_rect(p).has_point(bp.pos):
+				if can_be_stunned(p) and player_rect(p).has_point(bp.pos):
 					stun_player(p)
 					dead = true
 					break
@@ -262,9 +265,13 @@ func _draw_front() -> void:
 	for w in waves:
 		var rot: float = PI * 0.5 * float(w.dir)
 		var bob := sin(_t * 18.0 + float(w.x) * 0.05) * 3.0
-		var at := Vector2(float(w.x), GROUND_Y - 16.0 + bob)
-		Art.draw_sprite(self, "红箭头", at, 30.0, rot, Color(1.0, 0.55, 0.45))
-		Art.draw_sprite(self, "红箭头", at, 30.0, rot, Color(1.6, 1.0, 0.9, 0.5 + 0.5 * sin(_t * 30.0)))
+		# 刚冒出来的 0.2 秒从地里弹出来：由小到大、由透明到实，带一点过冲，别啪一下出现
+		var k := clampf(float(w.age) / ARROW_POP_TIME, 0.0, 1.0)
+		var pop := 1.0 - pow(1.0 - k, 3.0)
+		var size := 30.0 * (0.4 + 0.6 * pop) * (1.0 + 0.25 * sin(k * PI))
+		var at := Vector2(float(w.x), GROUND_Y - 16.0 * pop + bob * pop)
+		Art.draw_sprite(self, "红箭头", at, size, rot, Color(1.0, 0.55, 0.45, pop))
+		Art.draw_sprite(self, "红箭头", at, size, rot, Color(1.6, 1.0, 0.9, (0.5 + 0.5 * sin(_t * 30.0)) * pop))
 	# 落点预警是粒子 + 文字，这里只画怪兽砸回来的东西
 	for bp in boss_projs:
 		Art.draw_item(self, int(bp.item), bp.pos, float(bp.rot))

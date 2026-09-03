@@ -556,12 +556,12 @@ func _run_full_story() -> void:
 			[1],
 		)
 
-	# 隐藏关《不如跳舞》：先挑一首，跳完可以换一首接着跳，也可以真的退出回标题
-	_status.text = "完整流程：隐藏关 不如跳舞"
+	# 隐藏关《接着奏乐接着舞》：先挑一首，跳完可以换一首接着跳，也可以真的退出回标题
+	_status.text = "完整流程：隐藏关 接着奏乐接着舞"
 	await _fade_out_anchor()
 	var hidden := LevelIntro.new()
 	add_child(hidden)
-	await hidden.run(0, "隐藏关：按键和规则同第二关", [], [], [], "", "《不如跳舞》")
+	await hidden.run(0, "隐藏关：按键和规则同第二关", [], [], [], "", "《接着奏乐接着舞》")
 	var pick := await Dialogue.entree(
 		Dialogue.Character.NPC0,
 		Dialogue.ExpressionState.SPEAKING,

@@ -31,6 +31,7 @@ const NEAR_LOB_DIST := 36.0
 const MOVE_SPEED := 155.0
 const JUMP_VELOCITY := -330.0
 const STUN_TIME := 2.0
+const INVULN_TIME := 1.2           # 眩晕解除后的无敌时间
 const THROW_COOLDOWN := 0.65
 ## 挥臂到出手的间隔，对准"扔东西"动作表的第 3 帧
 const THROW_RELEASE := 0.16
@@ -58,6 +59,7 @@ class PlayerState:
 	var ai_target_x := -1.0
 	var ai_timer := 0.0
 	var ai_just_freed := false   # 眩晕刚解除的那一帧置位，AI 借此第一时间跳开
+	var invuln := 0.0            # 眩晕解除后的无敌时间，防止被连控
 
 
 ## 打开后在左上角列出还没到货的素材，方便对着清单催素材
@@ -65,6 +67,10 @@ class PlayerState:
 
 ## 背景底色。子类可以按拍子改它，让整个画面跟着呼吸
 var bg_color := Color(0.055, 0.055, 0.075)
+## 有别的东西铺满背景（比如跳舞阶段的视频）时关掉底色，别把它盖住
+var draw_background := true
+## 反光地板的底色，三个阶段各一个：扔东西蓝、跳舞紫、电梯怪兽红。子类在 _ready 里改。
+var floor_tint := Color(0.36, 0.46, 0.85)
 ## 地面上那条浅色接触线。跳舞不要，人直接站在反光地板上
 var draw_ground_line := true
 
@@ -144,7 +150,7 @@ func _setup_floor() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = FLOOR_SHADER
 	mat.set_shader_parameter("wave_noise", noise_tex)
-	mat.set_shader_parameter("floor_tint", Color(0.75, 0.39, 0.34))
+	mat.set_shader_parameter("floor_tint", floor_tint)
 	mat.set_shader_parameter("tint_amount", 0.6)
 	mat.set_shader_parameter("depth_dim", 0.35)
 	mat.set_shader_parameter("perspective", 0.35)
@@ -279,6 +285,14 @@ func update_player(p: PlayerState, delta: float) -> void:
 		if p.stun <= 0.0:
 			p.fig.set_stunned(false)
 			p.ai_just_freed = true
+			# 刚醒来给一段无敌，否则对面掐着眩晕结束再砸一下就能一直连控
+			p.invuln = INVULN_TIME
+	if p.invuln > 0.0:
+		p.invuln -= delta
+		# 无敌期间闪一闪，让双方都看得出来这会儿砸不中
+		p.fig.modulate.a = 0.45 if fmod(p.invuln * 10.0, 1.0) < 0.5 else 1.0
+		if p.invuln <= 0.0:
+			p.fig.modulate.a = 1.0
 
 	var dir := 0.0
 	var wants_jump := false
@@ -325,7 +339,14 @@ func update_player(p: PlayerState, delta: float) -> void:
 	p.fig.auto_pose(p.on_ground, p.vel.x)
 
 
+## 眩晕中或无敌中的不再吃眩晕，防止连控。
+func can_be_stunned(p: PlayerState) -> bool:
+	return p.stun <= 0.0 and p.invuln <= 0.0
+
+
 func stun_player(p: PlayerState, hint := "!") -> void:
+	if not can_be_stunned(p):
+		return
 	p.stun = STUN_TIME
 	p.fig.set_stunned(true)
 	Sfx.play(self, SFX_CLANK, -10.0, _rng.randf_range(0.9, 1.15))
@@ -568,13 +589,15 @@ func run_countdown() -> void:
 # ---------- 绘制 ----------
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, 640, 360), bg_color)
+	if draw_background:
+		draw_rect(Rect2(0, 0, 640, 360), bg_color)
 	_draw_back()
 	if draw_ground_line:
 		draw_line(Vector2(0, GROUND_Y + 3.0), Vector2(640, GROUND_Y + 3.0), Color(0.85, 0.82, 0.72), 4.0, true)
 	if draw_obstacle_blocks:
 		for r in obstacles:
-			Art.draw_in_rect(self, "隔断", r)
+			# 贴图往下多画 2px 沉进地板：地板从 GROUND_Y+1 起铺，不然门底和地板之间露一行底色
+			Art.draw_in_rect(self, "隔断", Rect2(r.position, r.size + Vector2(0.0, 2.0)))
 	_draw_projectiles()
 	_draw_front()
 

@@ -15,9 +15,11 @@ const LANE_XS := [[30.0, 72.0, 114.0, 156.0], [484.0, 526.0, 568.0, 610.0]]
 ## 颜色 / 亮度都用 tween 过渡，不硬切
 const TINT_TWEEN := 0.6
 const BEATS_PER_BAR := 4             # 4/4
-## 有视频的曲子在电梯箱里挂一块 16:9 的小屏幕。电梯内壁在屏幕上是 x 263~380、y 105~288，
-## 屏幕居中贴在内壁上部，不铺满，留出电梯本身的样子。
+## 有视频的曲子：整张视频压得很暗铺满背景做层次，电梯箱里再挂一块 16:9 的小屏幕亮着放同一画面。
+## 电梯内壁在屏幕上是 x 263~380、y 105~288，小屏居中贴在内壁上部，不铺满，留出电梯本身的样子。
 const VIDEO_RECT := Rect2(273.0, 118.0, 96.0, 54.0)
+## 背景视频压到这么暗，只剩个影子；拍子来的时候再跟着 bg 一起亮一点
+const VIDEO_BG_TINT := Color(0.22, 0.22, 0.26)
 const RECEPTOR_Y := 52.0
 const NOTE_SPAWN_Y := 236.0    # 音符只在这条线以上滚动，不挡住两人的立绘
 const SCROLL_SPEED := 140.0
@@ -93,36 +95,36 @@ const SONGS := {
 			{bars = 24, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 副歌3 到结尾：图案最全
 		],
 	},
-	# ずっと真夜中でいいのに。《秒針を噛む》。130 BPM，弱起，鼓组进来那下是第 2 拍，
-	# 所以第 1 拍在它前面一拍 = 6.908 秒。全长 259 秒，第 134 小节起没声，取 132。
-	# 段落是按每小节的音量曲线切的，不是 4 的倍数：第一段副歌 1:17 进（第 38 小节）只有 9 小节，
-	# 108~112 小节整段空掉是原曲的停顿，那几小节每小节只打一下。
+	# ずっと真夜中でいいのに。《秒針を噛む》。130 BPM，弱起，鼓组进来那下（7.37 秒）是第 4 拍，
+	# 第 1 拍在它后面一拍 = 7.831 秒（实机对过：按 6.908 快了两拍）。全长 259 秒，第 134 小节起没声，取 132。
+	# 段落是按每小节的音量曲线切的，不是 4 的倍数：第一段副歌 1:17 进（第 37 小节）只有 9 小节，
+	# 108~111 小节整段空掉是原曲的停顿，那几小节每小节只打一下。
 	"秒針を噛む": {
 		bpm = 130.0,
-		first_beat = 6.908,
+		first_beat = 7.831,
 		bars = 132,
 		music = "res://Assets/Music/秒針を噛む.mp3",
 		video = "res://Assets/Music/秒針を噛む.ogv",
-		chorus = [[38, 47], [69, 87], [98, 108], [113, 132]],
+		chorus = [[37, 46], [69, 86], [97, 108], [112, 132]],
 		sections = [
 			{bars = 4, per_bar = 2, patterns = ["连打"], phrase = 4},                           # 钢琴前奏
-			{bars = 18, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌
+			{bars = 17, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌
 			{bars = 16, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                  # 预副歌，音量已经上来
 			{bars = 9, per_bar = 4, patterns = ["两两"], phrase = 4},                           # 副歌 1（1:17）：两两一组
-			{bars = 22, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌 2 + 预副歌
-			{bars = 18, per_bar = 4, patterns = ["两两", "连打"], phrase = 4},                  # 副歌 2
+			{bars = 23, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌 2 + 预副歌
+			{bars = 17, per_bar = 4, patterns = ["两两", "连打"], phrase = 4},                  # 副歌 2
 			{bars = 11, per_bar = 2, patterns = ["交替", "连打"], phrase = 4},                  # 桥段
-			{bars = 10, per_bar = 4, patterns = ["两两", "连打"], phrase = 2},                  # 副歌 3 前半
-			{bars = 5, per_bar = 1, patterns = ["连打"], phrase = 4},                           # 停顿：每小节只打一下
-			{bars = 19, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 最后的副歌到结尾
+			{bars = 11, per_bar = 4, patterns = ["两两", "连打"], phrase = 2},                  # 副歌 3 前半
+			{bars = 4, per_bar = 1, patterns = ["连打"], phrase = 4},                           # 停顿：每小节只打一下
+			{bars = 20, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 最后的副歌到结尾
 		],
 	},
-	# Dua Lipa《Levitating》。103 BPM，前面 2 秒静音，鼓进来后再数两拍才是第 1 拍 = 12.125 秒。
+	# Dua Lipa《Levitating》。103 BPM，前面 2 秒静音，鼓进来（10.96 秒）后再数一拍才是第 1 拍 = 11.543 秒（实机对过）。
 	# 全长 206 秒，第 81 小节收尾，取 80。段落按音量曲线切：副歌 0:40 进（第 12 小节），
 	# 第 20 小节整小节停一下，61~64 是安静的桥段，这两处每小节只打一下。
 	"Levitating": {
 		bpm = 103.0,
-		first_beat = 12.125,
+		first_beat = 11.543,
 		bars = 80,
 		music = "res://Assets/Music/Levitating.mp3",
 		video = "res://Assets/Music/Levitating.ogv",
@@ -171,7 +173,8 @@ var _elapsed := 0.0            # 谱面时间轴，0 = 第 1 小节第 1 拍
 var _next_beat := 0.0
 var _last_note_time := 0.0
 var _music: AudioStreamPlayer
-var _video: VideoStreamPlayer
+var _video: VideoStreamPlayer          # 铺满背景的那份（真正在解码的）
+var _video_screen: TextureRect         # 电梯里的小屏，直接拿上面那份的画面贴，不用再解一遍
 var _disco: Array[ShaderMaterial] = []   # 两层交叉的光柱
 var _disco_color: Array[Color] = []       # 每层当前颜色（被 tween 推着走）
 var _bg_tint := Color(0.055, 0.055, 0.075)
@@ -186,6 +189,7 @@ var _count_label: Label
 
 func _ready() -> void:
 	_rng.randomize()
+	floor_tint = Color(0.62, 0.40, 0.85)   # 跳舞阶段地板是紫的
 	draw_obstacle_blocks = false
 	draw_ground_line = false
 	_load_song()
@@ -255,6 +259,8 @@ func _start_music() -> void:
 		_music.play()
 	if _video != null:
 		_video.play()
+		if _video_screen != null:
+			_video_screen.texture = _video.get_video_texture()
 
 
 # ---------- 音乐 ----------
@@ -295,17 +301,31 @@ func _setup_video() -> void:
 	var stream: VideoStream = load(path)
 	if stream == null:
 		return
+	# 背景那份放在 -1 层，压在这个节点自己画的所有东西下面；底色不画了，交给视频
+	var layer := CanvasLayer.new()
+	layer.layer = -1
+	add_child(layer)
 	_video = VideoStreamPlayer.new()
 	_video.stream = stream
 	# expand 要先开：不开的话最小尺寸就是视频原始尺寸，后面设的 size 会被顶回去
 	_video.expand = true
-	_video.position = VIDEO_RECT.position
-	_video.size = VIDEO_RECT.size
+	_video.position = Vector2.ZERO
+	_video.size = Vector2(640.0, 360.0)
 	_video.loop = false
 	_video.volume_db = -80.0
+	_video.modulate = VIDEO_BG_TINT
 	_video.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_video.z_index = 2
-	add_child(_video)
+	layer.add_child(_video)
+	draw_background = false
+	# 电梯里的小屏：贴的是同一张视频纹理，跟背景那份天然同步
+	_video_screen = TextureRect.new()
+	_video_screen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_video_screen.stretch_mode = TextureRect.STRETCH_SCALE
+	_video_screen.position = VIDEO_RECT.position
+	_video_screen.size = VIDEO_RECT.size
+	_video_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_video_screen.z_index = 2
+	add_child(_video_screen)
 
 
 func _find_music() -> String:
@@ -503,6 +523,10 @@ func _drive_disco(delta: float) -> void:
 		mat.set_shader_parameter("angle_deg", ang)
 	# 背景跟着拍子染一点当前色（目标色本身是 tween 过去的），整个画面一起呼吸
 	bg_color = BG_BASE.lerp(_bg_tint, 0.2 * kick * _energy) if started else BG_BASE
+	if _video != null:
+		# 背景视频跟着拍子一起亮一点，和底色的呼吸是同一套
+		var lift := 0.35 * kick * _energy if started else 0.0
+		_video.modulate = VIDEO_BG_TINT.lerp(_bg_tint * 1.6 + Color(0.3, 0.3, 0.3), lift)
 	# 人物：每拍小幅点头，打中时弹一下并闪白
 	for side in _sides:
 		side.punch = maxf(float(side.punch) - delta * 4.5, 0.0)
