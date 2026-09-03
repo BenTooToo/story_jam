@@ -32,6 +32,7 @@ var _active := false
 var _typing := false
 var _generation := 0
 var _options: Array[String] = []
+var _disabled: Array[int] = []
 var _portrait_home := Vector2.ZERO
 var _portrait_closed: Texture2D
 var _portrait_open: Texture2D
@@ -50,11 +51,13 @@ func show_entry(
 	expression_id: int,
 	dialogue_text: String,
 	options: Array[String],
+	disabled_options: Array[int] = [],
 ) -> int:
 	_generation += 1
 	_active = true
 	_typing = true
 	_options = options.duplicate()
+	_disabled = disabled_options.duplicate()
 	_clear_choices()
 	_update_portrait(character_id, expression_id)
 
@@ -179,14 +182,24 @@ func _show_choices() -> void:
 		button.add_theme_stylebox_override("hover", _choice_style(Color.TRANSPARENT))
 		button.add_theme_stylebox_override("focus", _choice_style(Color(0.18, 0.18, 0.2, 0.839)))
 		button.add_theme_stylebox_override("pressed", _choice_style(Color(0.22, 0.21, 0.18, 0.839)))
-		button.mouse_entered.connect(button.grab_focus)
-		button.focus_entered.connect(_on_choice_focused.bind(index))
-		button.pressed.connect(_on_choice_pressed.bind(index))
+		if _disabled.has(index):
+			# 灰掉：看得见、点不了、光标也跳不上去
+			button.disabled = true
+			button.focus_mode = Control.FOCUS_NONE
+			button.mouse_default_cursor_shape = Control.CURSOR_ARROW
+			button.add_theme_color_override("font_disabled_color", Color(0.3, 0.3, 0.34, 1.0))
+			button.add_theme_stylebox_override("disabled", _choice_style(Color.TRANSPARENT))
+		else:
+			button.mouse_entered.connect(button.grab_focus)
+			button.focus_entered.connect(_on_choice_focused.bind(index))
+			button.pressed.connect(_on_choice_pressed.bind(index))
 		_choice_list.add_child(button)
 
 	_choice_panel.show()
-	if _choice_list.get_child_count() > 0:
-		_choice_list.get_child(0).grab_focus()
+	for child in _choice_list.get_children():
+		if not child.disabled:
+			child.grab_focus()
+			break
 
 
 func _choice_style(background_color: Color) -> StyleBoxFlat:

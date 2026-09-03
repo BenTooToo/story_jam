@@ -6,8 +6,12 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 ## 怪兽本体等 高艺晨 的 电梯怪兽.png；没到货之前先拿电梯箱压暗顶着。
 const BOSS_FALLBACK_TEX := preload("res://Assets/Edited/电梯箱.png")
 const BOSS_TINT := Color(0.58, 0.56, 0.62)
+const BGM := "res://Assets/Music/番剧之歌.mp3"
+## 冲击波贴地速度。玩家离波起点约 200px，140 给 1.5 秒左右的反应时间
+const WAVE_SPEED := 140.0
 
-@export var boss_hp_max := 60
+## 每次砸中扣 3，150 血两个人合力大约要砸 50 下
+@export var boss_hp_max := 150
 
 var boss_hp := 0
 var boss_alive := true
@@ -57,7 +61,7 @@ func _build_boss() -> void:
 func _build_hud() -> void:
 	make_hud_label("电梯怪兽", 0, 40, 640, 13, Color(0.9, 0.6, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
 	make_hud_label(
-		"合力打倒它！  P1：A/D/W + F      P2：←/→/↑ + /",
+		"合力打倒它！  P1：A/D/W + F      " + p2_hint("P2：←/→/↑ + /"),
 		0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
 	)
 
@@ -68,6 +72,7 @@ func _intro() -> void:
 	var banner := show_banner("电梯怪兽出现了！", Color(0.9, 0.5, 0.5))
 	await get_tree().create_timer(1.4).timeout
 	banner.queue_free()
+	play_bgm(BGM)
 	controls_enabled = true
 	running = true
 
@@ -112,6 +117,46 @@ func _damage_boss(amount: int, at: Vector2, from_id: int) -> void:
 		_die()
 
 
+# ---------- 电脑操控的 P2 ----------
+
+## 单人模式的男生：守右半场朝怪兽扔，冲击波快到就跳，落点感叹号在脚边就跑开。
+func ai_command(p: PlayerState, delta: float) -> Dictionary:
+	var cmd := {dir = 0.0, jump = false, throw = false}
+	p.ai_timer -= delta
+	if not boss_alive:
+		return cmd
+
+	# 跳：朝自己滚来的冲击波离脚下 50px 以内就起跳（跳一次约 0.67 秒，波速 140）
+	for w in waves:
+		var dx := float(w.x) - p.pos.x
+		var coming := (dx < 0.0 and float(w.dir) > 0.0) or (dx > 0.0 and float(w.dir) < 0.0)
+		if coming and absf(dx) < 50.0 and p.on_ground:
+			cmd.jump = true
+
+	# 躲：有东西要砸到脚边，往远离落点的方向跑，但别跑进怪兽的身位
+	for bp in boss_projs:
+		var land := float(bp.get("land_x", -999.0))
+		if absf(land - p.pos.x) < 34.0:
+			var away := 1.0 if land < p.pos.x else -1.0
+			if p.pos.x + away * 30.0 < _boss_rect.end.x + CHAR_HALF_W + 6.0:
+				away = 1.0
+			if p.pos.x > ARENA_RIGHT - 20.0:
+				away = -1.0
+			cmd.dir = away
+			return cmd
+
+	# 平时在右半场慢慢换位，站太死容易被连砸
+	if p.ai_target_x < 0.0 or absf(p.ai_target_x - p.pos.x) < 8.0:
+		p.ai_target_x = _rng.randf_range(_boss_rect.end.x + 40.0, 600.0)
+	cmd.dir = ai_step_toward(p, p.ai_target_x, 6.0)
+
+	# 扔：冷却好了再等一小会儿
+	if p.cooldown <= 0.0 and p.throw_timer <= 0.0 and p.ai_timer <= 0.0:
+		cmd.throw = true
+		p.ai_timer = _rng.randf_range(0.3, 0.9)
+	return cmd
+
+
 # ---------- 怪兽攻击 ----------
 
 func _do_attack() -> void:
@@ -136,6 +181,7 @@ func _do_attack() -> void:
 				grav = arc.grav,
 				item = Art.random_item(_rng, 5),
 				rot = 0.0,
+				land_x = land_x,   # 电脑玩家靠这个躲
 			})
 			# 落点先打个感叹号 + 火星，给玩家反应时间
 			Fx.pop_text(self, Vector2(land_x, GROUND_Y - 30.0), "!", Color(0.95, 0.4, 0.32), 20, 0.5, 6.0)
@@ -146,7 +192,7 @@ func _step_waves(delta: float) -> void:
 	var i := waves.size() - 1
 	while i >= 0:
 		var w: Dictionary = waves[i]
-		w.x = float(w.x) + float(w.dir) * 230.0 * delta
+		w.x = float(w.x) + float(w.dir) * WAVE_SPEED * delta
 		w.puff = float(w.puff) - delta
 		if float(w.puff) <= 0.0:
 			w.puff = 0.055
@@ -188,6 +234,7 @@ func _die() -> void:
 	obstacles.clear()
 	waves.clear()
 	boss_projs.clear()
+	fade_out_bgm(2.0)
 	Sfx.play(self, SFX_CLANK, -2.0, 0.8)
 	Sfx.play(self, Sfx.blip(400.0, 60.0, 0.6, 0.4))
 	shake(8.0, 0.6)
@@ -210,7 +257,15 @@ func _die() -> void:
 # ---------- 绘制 ----------
 
 func _draw_front() -> void:
-	# 冲击波和落点预警都是粒子 + 文字，这里只画怪兽砸回来的东西
+	# 冲击波光靠地上的尘土看不清，借跳舞的红箭头贴地飞：箭头朝波前进的方向，
+	# 随波一起走、微微上下浮，一眼就知道"这东西要过来了"
+	for w in waves:
+		var rot: float = PI * 0.5 * float(w.dir)
+		var bob := sin(_t * 18.0 + float(w.x) * 0.05) * 3.0
+		var at := Vector2(float(w.x), GROUND_Y - 16.0 + bob)
+		Art.draw_sprite(self, "红箭头", at, 30.0, rot, Color(1.0, 0.55, 0.45))
+		Art.draw_sprite(self, "红箭头", at, 30.0, rot, Color(1.6, 1.0, 0.9, 0.5 + 0.5 * sin(_t * 30.0)))
+	# 落点预警是粒子 + 文字，这里只画怪兽砸回来的东西
 	for bp in boss_projs:
 		Art.draw_item(self, int(bp.item), bp.pos, float(bp.rot))
 

@@ -2,7 +2,7 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 ## 阶段二：舞蹈对决。上下左右音游，两边谱面完全相同。
 ## P1 用 WASD，P2 用方向键；完美 +5，还行 +2，错过记一次“烂”。
 ##
-## 谱面跟着曲子走：150 BPM、4/4、56 小节。曲子放进 Assets/Branch/ 就自动接上，
+## 谱面跟着曲子走，曲子的 BPM / 起拍 / 段落都登记在 SONGS 里，song_name 挑一首。
 ## 没有曲子时回退到代码生成的节拍音，方便单独调玩法。
 
 const ELEVATOR_TEX := preload("res://Assets/Edited/电梯箱.png")
@@ -14,14 +14,10 @@ const DANCER_X := [195.0, 445.0]
 const LANE_XS := [[30.0, 72.0, 114.0, 156.0], [484.0, 526.0, 568.0, 610.0]]
 ## 颜色 / 亮度都用 tween 过渡，不硬切
 const TINT_TWEEN := 0.6
-const ENERGY_TWEEN := BAR
-## 副歌段光柱打满，主歌 / 过渡收一点
-const CHORUS_BARS := [[16, 32], [40, 56]]
-
-const BEAT := 60.0 / 150.0           # 150 BPM -> 一拍 0.4 秒
 const BEATS_PER_BAR := 4             # 4/4
-const BAR := BEAT * BEATS_PER_BAR    # 一小节 1.6 秒
-const BARS := 56                     # 音乐主体 56 小节 = 89.6 秒
+## 有视频的曲子在电梯箱里挂一块 16:9 的小屏幕。电梯内壁在屏幕上是 x 263~380、y 105~288，
+## 屏幕居中贴在内壁上部，不铺满，留出电梯本身的样子。
+const VIDEO_RECT := Rect2(273.0, 118.0, 96.0, 54.0)
 const RECEPTOR_Y := 52.0
 const NOTE_SPAWN_Y := 236.0    # 音符只在这条线以上滚动，不挡住两人的立绘
 const SCROLL_SPEED := 140.0
@@ -37,8 +33,7 @@ const WHIFF_PENALTY := 2
 ## 否则玩家打掉前一个之后，后一个在窗口里已经无音符可配，必漏。
 const MIN_LANE_GAP := MISS_WINDOW + 0.06
 
-## 曲子路径。文件名不一样也没关系，找不到会自动扫 Assets/Branch/ 里的音频。
-const MUSIC_PATH := "res://Assets/Branch/可爱的小曲.wav"
+## 默认曲子放在 Assets/Branch/，文件名不一样也没关系，找不到会自动扫这个目录里的音频。
 const MUSIC_DIR := "res://Assets/Branch/"
 const MUSIC_EXTS := ["ogg", "wav", "mp3"]
 
@@ -53,25 +48,113 @@ const PATTERNS := {
 	"扫过": [0, 1, 2, 3],   # 四个方向扫一遍
 }
 
-## 段落跟着曲式：主歌 1-16、副歌 17-32、过渡 33-40、第二次副歌 41-56。
-## per_bar = 每小节几个音符（2 = 只打第 1、3 拍；4 = 每拍都打）
-## patterns = 这段允许哪几种图案；phrase = 同一个图案连续几小节再换
-## bars 合计必须正好是 BARS。全部音符都在正拍上，没有八分切分。
-const SECTIONS := [
-	{bars = 16, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌：最简单
-	{bars = 16, per_bar = 4, patterns = ["连打", "两两"], phrase = 4},                  # 副歌：密但只有连打和两两
-	{bars = 8, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                   # 过渡：喘口气，开始有交替
-	{bars = 16, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 副歌2：图案最全、换得最勤
-]
+## 曲库。玩法代码只认这些字段，换歌 / 加歌只改这里：
+## - bpm、first_beat：曲子里第几秒是第 1 小节第 1 拍（起拍前的前奏照放，只是不打音符）
+## - bars：谱面小节数；sections 的 bars 合计必须正好等于它
+## - sections：段落跟着曲式。per_bar = 每小节几个音符（2 = 只打第 1、3 拍；4 = 每拍都打），
+##   patterns = 这段允许哪几种图案，phrase = 同一个图案连续几小节再换。per_bar = 1 是"每小节只打一下"，用来做停顿 / 桥段。
+##   全部音符都在正拍上，没有八分切分。
+## - chorus：副歌小节区间，光柱打满；主歌 / 过渡收一点
+## - music：音轨；video：可选，Theora ogv，放在电梯箱里面（见 VIDEO_RECT）
+const SONGS := {
+	"可爱的小曲": {
+		bpm = 150.0,
+		first_beat = 0.0,   # 分析过：0 秒就出声，起音全落在 0.4 秒的网格上
+		bars = 56,          # 音乐主体 56 小节 = 89.6 秒
+		music = "res://Assets/Branch/可爱的小曲.wav",
+		video = "",
+		chorus = [[16, 32], [40, 56]],
+		# 主歌 1-16、副歌 17-32、过渡 33-40、第二次副歌 41-56
+		sections = [
+			{bars = 16, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌：最简单
+			{bars = 16, per_bar = 4, patterns = ["连打", "两两"], phrase = 4},                  # 副歌：密但只有连打和两两
+			{bars = 8, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                   # 过渡：喘口气，开始有交替
+			{bars = 16, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 副歌2：图案最全、换得最勤
+		],
+	},
+	# 陈慧琳《不如跳舞》，B 站视频抽的音轨。140 BPM。
+	# 7.12 秒那个重音是小节里的第 2 拍，按它对会慢一拍，往前挪 1 拍 = 6.691 秒才是第 1 拍。
+	# 全长 189 秒，起拍后能放 106 小节，取 104 留个尾巴。
+	# 48 秒左右进第一次副歌 = 第 24 小节，从那儿开始"两两"一组。
+	"不如跳舞": {
+		bpm = 140.0,
+		first_beat = 6.691,
+		bars = 104,
+		music = "res://Assets/Music/不如跳舞.mp3",
+		video = "res://Assets/Music/不如跳舞.ogv",
+		chorus = [[24, 40], [56, 72], [80, 104]],
+		sections = [
+			{bars = 8, per_bar = 2, patterns = ["连打"], phrase = 4},                           # 前奏
+			{bars = 16, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌
+			{bars = 16, per_bar = 4, patterns = ["两两"], phrase = 4},                          # 副歌（48 秒）：两两一组
+			{bars = 16, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌2
+			{bars = 16, per_bar = 4, patterns = ["两两", "连打"], phrase = 4},                  # 副歌2
+			{bars = 8, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                   # 间奏
+			{bars = 24, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 副歌3 到结尾：图案最全
+		],
+	},
+	# ずっと真夜中でいいのに。《秒針を噛む》。130 BPM，弱起，鼓组进来那下是第 2 拍，
+	# 所以第 1 拍在它前面一拍 = 6.908 秒。全长 259 秒，第 134 小节起没声，取 132。
+	# 段落是按每小节的音量曲线切的，不是 4 的倍数：第一段副歌 1:17 进（第 38 小节）只有 9 小节，
+	# 108~112 小节整段空掉是原曲的停顿，那几小节每小节只打一下。
+	"秒針を噛む": {
+		bpm = 130.0,
+		first_beat = 6.908,
+		bars = 132,
+		music = "res://Assets/Music/秒針を噛む.mp3",
+		video = "res://Assets/Music/秒針を噛む.ogv",
+		chorus = [[38, 47], [69, 87], [98, 108], [113, 132]],
+		sections = [
+			{bars = 4, per_bar = 2, patterns = ["连打"], phrase = 4},                           # 钢琴前奏
+			{bars = 18, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌
+			{bars = 16, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                  # 预副歌，音量已经上来
+			{bars = 9, per_bar = 4, patterns = ["两两"], phrase = 4},                           # 副歌 1（1:17）：两两一组
+			{bars = 22, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌 2 + 预副歌
+			{bars = 18, per_bar = 4, patterns = ["两两", "连打"], phrase = 4},                  # 副歌 2
+			{bars = 11, per_bar = 2, patterns = ["交替", "连打"], phrase = 4},                  # 桥段
+			{bars = 10, per_bar = 4, patterns = ["两两", "连打"], phrase = 2},                  # 副歌 3 前半
+			{bars = 5, per_bar = 1, patterns = ["连打"], phrase = 4},                           # 停顿：每小节只打一下
+			{bars = 19, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 最后的副歌到结尾
+		],
+	},
+	# Dua Lipa《Levitating》。103 BPM，前面 2 秒静音，鼓进来后再数两拍才是第 1 拍 = 12.125 秒。
+	# 全长 206 秒，第 81 小节收尾，取 80。段落按音量曲线切：副歌 0:40 进（第 12 小节），
+	# 第 20 小节整小节停一下，61~64 是安静的桥段，这两处每小节只打一下。
+	"Levitating": {
+		bpm = 103.0,
+		first_beat = 12.125,
+		bars = 80,
+		music = "res://Assets/Music/Levitating.mp3",
+		video = "res://Assets/Music/Levitating.ogv",
+		chorus = [[12, 20], [33, 50], [65, 80]],
+		sections = [
+			{bars = 12, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌 + 预副歌
+			{bars = 8, per_bar = 4, patterns = ["两两"], phrase = 4},                           # 副歌 1（0:40）：两两一组
+			{bars = 1, per_bar = 1, patterns = ["连打"], phrase = 1},                           # 全停一小节
+			{bars = 12, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌 2
+			{bars = 17, per_bar = 4, patterns = ["两两", "连打"], phrase = 4},                  # 副歌 2
+			{bars = 11, per_bar = 2, patterns = ["交替", "连打"], phrase = 4},                  # 副歌后段 / 主歌 3
+			{bars = 4, per_bar = 1, patterns = ["连打"], phrase = 4},                           # 桥段：每小节只打一下
+			{bars = 15, per_bar = 4, patterns = ["连打", "两两", "交替", "扫过"], phrase = 2},  # 最后的副歌到结尾
+		],
+	},
+}
 
-## 前奏打几拍节拍再起曲子。第一个箭头正好在第 0 拍到判定线，曲子也在那一刻响。
+## 挑哪首。正式流程用默认的；试玩入口见 game.gd：9 =《不如跳舞》，J =《秒針を噛む》，L =《Levitating》。
+@export var song_name := "可爱的小曲"
+
+## 前奏至少打 8 拍节拍再到第 0 拍。曲子自己有前奏（first_beat > 0）的话，
+## 前奏更长：曲子在 -first_beat 那一刻响，节拍音只在最后 8 拍打。
 const LEAD_IN_BEATS := 8
-const LEAD_IN := BEAT * LEAD_IN_BEATS
 
-## 曲子里第几秒对上谱面的第 1 小节第 1 拍。
-## 分析过 可爱的小曲.wav：0 秒就出声，起音全落在 0.4 秒的网格上，所以是 0。
-## 以后换曲子或者觉得整体偏早/偏晚，调这一个数就行。
-@export var music_offset := 0.0
+# 下面这些都在 _load_song 里按 SONGS[song_name] 算出来
+var song: Dictionary = {}
+var beat := 0.4                # 一拍几秒
+var bar_len := 1.6             # 一小节几秒
+var bars := 56
+var lead_in := 3.2             # 时间轴从 -lead_in 开始走
+var music_offset := 0.0        # = song.first_beat
+var music_path := ""
 
 var lane_pose := [
 	CharSprite.Pose.DANCE_LEFT,
@@ -88,6 +171,7 @@ var _elapsed := 0.0            # 谱面时间轴，0 = 第 1 小节第 1 拍
 var _next_beat := 0.0
 var _last_note_time := 0.0
 var _music: AudioStreamPlayer
+var _video: VideoStreamPlayer
 var _disco: Array[ShaderMaterial] = []   # 两层交叉的光柱
 var _disco_color: Array[Color] = []       # 每层当前颜色（被 tween 推着走）
 var _bg_tint := Color(0.055, 0.055, 0.075)
@@ -101,8 +185,10 @@ var _count_label: Label
 
 
 func _ready() -> void:
+	_rng.randomize()
 	draw_obstacle_blocks = false
 	draw_ground_line = false
+	_load_song()
 	_chart = _build_chart()
 	_build_stage()
 	_build_disco()
@@ -111,17 +197,33 @@ func _ready() -> void:
 	_start()
 
 
+func _load_song() -> void:
+	if not SONGS.has(song_name):
+		push_warning("曲库里没有「%s」，用默认曲子" % song_name)
+		song_name = "可爱的小曲"
+	song = SONGS[song_name]
+	beat = 60.0 / float(song.bpm)
+	bar_len = beat * BEATS_PER_BAR
+	bars = int(song.bars)
+	music_offset = float(song.first_beat)
+	music_path = String(song.music)
+	# 前奏至少 8 拍；曲子自己的前奏更长就按整拍向上取，保证第 0 拍前曲子已经响了
+	lead_in = maxf(beat * LEAD_IN_BEATS, ceilf(music_offset / beat) * beat)
+
+
 func _start() -> void:
-	# 时间轴从 -LEAD_IN 开始走：前面 8 拍只打节拍、数 3-2-1，箭头先滚进来；
-	# 第一个箭头到判定线的那一刻（第 0 拍）曲子才响。
-	_elapsed = -LEAD_IN
-	_next_beat = -LEAD_IN
+	# 时间轴从 -lead_in 开始走：前面只打节拍、数 3-2-1，箭头先滚进来；
+	# 曲子在 -first_beat 那一刻响，第一个箭头到判定线的那一刻正好是曲子的第 1 拍。
+	_elapsed = -lead_in
+	_next_beat = -lead_in
 	running = true
 
 
-## 前奏每一拍：打节拍音，隔一拍报一个数。
+## 前奏每一拍：最后 8 拍打节拍音，隔一拍报一个数。更早的拍子（曲子自己的前奏）不打，不吵。
 func _count_in_beat(beat_time: float) -> void:
-	var idx := roundi(beat_time / BEAT)          # -8 … -1
+	var idx := roundi(beat_time / beat)          # -lead_in_beats … -1
+	if idx < -LEAD_IN_BEATS:
+		return
 	var downbeat := posmod(idx, BEATS_PER_BAR) == 0
 	Sfx.play(self, Sfx.blip(1046.0 if downbeat else 740.0, 1000.0 if downbeat else 700.0, 0.045, 0.32))
 	match idx:
@@ -151,6 +253,8 @@ func _start_music() -> void:
 	_music_started = true
 	if _music != null:
 		_music.play()
+	if _video != null:
+		_video.play()
 
 
 # ---------- 音乐 ----------
@@ -159,6 +263,8 @@ func _start_music() -> void:
 func _exit_tree() -> void:
 	if _music != null and _music.playing:
 		_music.stop()
+	if _video != null and _video.is_playing():
+		_video.stop()
 
 
 func _setup_music() -> void:
@@ -177,12 +283,37 @@ func _setup_music() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.stream = stream
 	add_child(_music)
+	_setup_video()
+
+
+## 曲子带视频的话在电梯箱里挂块小屏幕放，和曲子同一刻起播。视频本身静音，声音只走音轨。
+## 盖在电梯箱贴图上（z 2）、迪斯科灯（z 3）下面，灯光会打在视频上。
+func _setup_video() -> void:
+	var path := String(song.get("video", ""))
+	if path == "" or not ResourceLoader.exists(path):
+		return
+	var stream: VideoStream = load(path)
+	if stream == null:
+		return
+	_video = VideoStreamPlayer.new()
+	_video.stream = stream
+	# expand 要先开：不开的话最小尺寸就是视频原始尺寸，后面设的 size 会被顶回去
+	_video.expand = true
+	_video.position = VIDEO_RECT.position
+	_video.size = VIDEO_RECT.size
+	_video.loop = false
+	_video.volume_db = -80.0
+	_video.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_video.z_index = 2
+	add_child(_video)
 
 
 func _find_music() -> String:
-	if ResourceLoader.exists(MUSIC_PATH):
-		return MUSIC_PATH
-	# 名字对不上也认：扫一遍目录挑第一个音频文件
+	if ResourceLoader.exists(music_path):
+		return music_path
+	# 默认目录里名字对不上也认：扫一遍目录挑第一个音频文件（别的目录不扫，免得抓到音效）
+	if music_path.get_base_dir() + "/" != MUSIC_DIR:
+		return ""
 	var dir := DirAccess.open(MUSIC_DIR)
 	if dir == null:
 		return ""
@@ -205,14 +336,14 @@ func _chart_time() -> float:
 	return t - AudioServer.get_output_latency() - music_offset
 
 
-## 按 SECTIONS 把图案铺到 56 小节上。固定种子，两边拿到的谱面完全一样。
+## 按 song.sections 把图案铺到 bars 小节上。固定种子，两边拿到的谱面完全一样。
 func _build_chart() -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260902
 	var notes := []
 	var bar := 0
 	var root := rng.randi_range(0, 3)
-	for sec: Dictionary in SECTIONS:
+	for sec: Dictionary in song.sections:
 		var per_bar: int = int(sec.per_bar)
 		var names: Array = sec.patterns
 		var phrase: int = int(sec.phrase)
@@ -237,14 +368,14 @@ func _build_chart() -> Array:
 					if flat and emitted > 0 and emitted % 4 == 0:
 						root = (root + rng.randi_range(1, 3)) % 4
 					notes.append({
-						time = bar * BAR + i * step_beats * BEAT,
+						time = bar * bar_len + i * step_beats * beat,
 						lane = (root + int(pat[i])) % 4,
 					})
 					emitted += 1
 				bar += 1
 				b += 1
-	if bar != BARS:
-		push_warning("谱面小节数对不上：SECTIONS 合计 %d，应为 %d" % [bar, BARS])
+	if bar != bars:
+		push_warning("谱面小节数对不上：sections 合计 %d，应为 %d" % [bar, bars])
 	_spread_lanes(notes)
 	_last_note_time = 0.0
 	for n in notes:
@@ -318,7 +449,7 @@ func _build_disco() -> void:
 
 
 func _in_chorus(bar: int) -> bool:
-	for r in CHORUS_BARS:
+	for r in song.chorus:
 		if bar >= int(r[0]) and bar < int(r[1]):
 			return true
 	return false
@@ -343,7 +474,7 @@ func _retint(bar: int) -> void:
 	if not is_equal_approx(energy_target, _energy):
 		var en_tw := create_tween()
 		en_tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		en_tw.tween_property(self, "_energy", energy_target, ENERGY_TWEEN)
+		en_tw.tween_property(self, "_energy", energy_target, bar_len)
 
 
 func _set_disco_color(c: Color, i: int) -> void:
@@ -354,9 +485,9 @@ func _set_disco_color(c: Color, i: int) -> void:
 ## 每帧按谱面时钟驱动灯光和人物的律动。
 func _drive_disco(delta: float) -> void:
 	var t := _elapsed
-	var beat_pos := t / BEAT
+	var beat_pos := t / beat
 	var frac := beat_pos - floorf(beat_pos)
-	var bar := maxi(int(floorf(t / BAR)), 0)
+	var bar := maxi(int(floorf(t / bar_len)), 0)
 	# 起曲前灯只留一点底光，不抢倒计时
 	var started := _music_started and t >= 0.0
 	# 每拍冲一下再衰减：峰值压低、衰减放缓，是"呼吸"不是"频闪"，看久了不晃眼
@@ -397,6 +528,8 @@ func _make_side(idx: int) -> Dictionary:
 		fig = null,
 		label = null,
 	}
+	# 单人模式下右边交给电脑，水平跟着玩家走（见 _ai_decide）
+	side.ai = idx == 1 and Session.single_player
 	for n in _chart:
 		side.notes.append({time = n.time, lane = n.lane, judged = false})
 	# 两人贴着电梯站，各自的箭头轨道在自己外侧
@@ -416,7 +549,7 @@ func _make_side(idx: int) -> Dictionary:
 	)
 	if idx == 0:
 		make_hud_label(
-			"P1：WASD      P2：方向键",
+			"P1：WASD      " + p2_hint("P2：方向键"),
 			0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
 		)
 	return side
@@ -434,18 +567,33 @@ func phase_tick(delta: float) -> void:
 		_elapsed = _chart_time()
 	else:
 		_elapsed += delta
-		if not _music_started:
-			# 前奏：打节拍、数拍子；第 0 拍第一个箭头到判定线，曲子响
-			while _next_beat <= _elapsed and _next_beat < 0.0:
-				_count_in_beat(_next_beat)
-				_next_beat += BEAT
-			if _elapsed >= 0.0:
-				_start_music()
-		if _music == null:
-			# 没曲子的时候整首都用节拍音顶着，方便不带音乐调玩法
-			while _next_beat <= _elapsed and _next_beat <= _last_note_time + 0.01:
-				Sfx.play(self, Sfx.blip(175.0, 165.0, 0.05, 0.2))
-				_next_beat += BEAT
+	if not _music_started and _elapsed >= -music_offset:
+		# 曲子在自己的第 1 拍之前 first_beat 秒响，这样第 0 拍正好对上
+		_start_music()
+	# 前奏：打节拍、数拍子；第 0 拍第一个箭头到判定线
+	while _next_beat <= _elapsed and _next_beat < 0.0:
+		_count_in_beat(_next_beat)
+		_next_beat += beat
+	if _music == null:
+		# 没曲子的时候整首都用节拍音顶着，方便不带音乐调玩法
+		while _next_beat <= _elapsed and _next_beat <= _last_note_time + 0.01:
+			Sfx.play(self, Sfx.blip(175.0, 165.0, 0.05, 0.2))
+			_next_beat += beat
+	# 电脑那边：每个音符到点前先决定这下打成什么样，再按决定好的时刻"按"
+	for side in _sides:
+		if not side.get("ai", false):
+			continue
+		for n in side.notes:
+			if n.judged:
+				continue
+			if not n.has("ai_press_at"):
+				if _elapsed < float(n.time) - 0.06:
+					break   # 音符按时间排好了，这个还没到，后面的更没到
+				_ai_decide(side, n)
+			if float(n.ai_press_at) < 0.0:
+				continue   # 决定漏掉的：不按，等它自己过窗口算烂
+			if _elapsed >= float(n.ai_press_at):
+				_judge(side, int(n.lane))
 	for side in _sides:
 		for n in side.notes:
 			if not n.judged and _elapsed > float(n.time) + MISS_WINDOW:
@@ -459,6 +607,27 @@ func phase_tick(delta: float) -> void:
 	if not _finishing and _elapsed > _last_note_time + 0.4:
 		_finishing = true
 		_finish()
+
+
+## 电脑跟着玩家的水平走：玩家分高它就打得准，玩家分低它也跟着烂，
+## 但目标始终定在比玩家少 AI_TRAIL 分——让玩家赢，但赢得没那么轻松。
+## ai_press_at < 0 表示这下故意漏掉。
+const AI_TRAIL := 8
+func _ai_decide(side: Dictionary, n: Dictionary) -> void:
+	var gap: int = int(side.score) - (int(_sides[0].score) - AI_TRAIL)   # >0 电脑领先目标线
+	# 落后目标线就几乎全完美；一越过去，领先越多漏得越多（领先 24 分以上九成漏）
+	var p_miss := 0.0
+	var p_perfect := 0.95
+	if gap >= -12:
+		p_miss = clampf(0.1 + float(gap) / 30.0, 0.05, 0.9)
+		p_perfect = (1.0 - p_miss) * 0.7
+	var roll := _rng.randf()
+	if roll < p_miss:
+		n.ai_press_at = -1.0
+	elif roll < p_miss + p_perfect:
+		n.ai_press_at = float(n.time) + _rng.randf_range(-0.04, 0.04)
+	else:
+		n.ai_press_at = float(n.time) + _rng.randf_range(0.09, 0.14)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -544,6 +713,8 @@ func _finish() -> void:
 	await get_tree().create_timer(wait).timeout
 	if _music != null:
 		_music.stop()
+	if _video != null:
+		_video.stop()
 	phase_finished.emit({
 		p1 = _sides[0].score,
 		p2 = _sides[1].score,

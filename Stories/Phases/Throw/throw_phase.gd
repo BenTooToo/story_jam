@@ -2,6 +2,8 @@ extends "res://Stories/Phases/Shared/arena_phase.gd"
 ## 阶段一：90 秒互扔大战。
 ## 砸中对面 +10 分，被砸中眩晕 2 秒；空中掉落 1 / 3 / 5 分的物品，碰到即得分。
 
+const BGM := "res://Assets/Music/乐队之歌.mp3"
+
 @export var duration := 90.0
 @export var item_interval := 2.4
 
@@ -26,6 +28,7 @@ func _ready() -> void:
 
 
 func _start() -> void:
+	play_bgm(BGM)
 	await run_countdown()
 	running = true
 
@@ -35,7 +38,7 @@ func _build_hud() -> void:
 	_score_right = make_hud_label("P2  0", 410, 58, 220, 15, P2_COLOR, HORIZONTAL_ALIGNMENT_RIGHT)
 	_timer_label = make_hud_label(str(ceili(duration)), 270, 56, 100, 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	make_hud_label(
-		"P1：A/D 移动  W 跳  F 扔      P2：←/→ 移动  ↑ 跳  / 扔",
+		"P1：A/D 移动  W 跳  F 扔      " + p2_hint("P2：←/→ 移动  ↑ 跳  / 扔"),
 		0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
 	)
 
@@ -80,6 +83,65 @@ func _on_player_hit(victim: PlayerState, proj: Dictionary) -> void:
 	victim.vel = Vector2.ZERO
 	stun_player(victim)
 	shake(5.0, 0.3)
+
+
+# ---------- 电脑操控的 P2 ----------
+
+## 单人模式的男生：守着右半场捡东西、隔一会儿扔一发、看见砸过来的就躲。
+## 反应故意留了余量，不然玩家根本赢不了。
+func ai_command(p: PlayerState, delta: float) -> Dictionary:
+	var cmd := {dir = 0.0, jump = false, throw = false}
+	p.ai_timer -= delta
+
+	# 眩晕一解除立刻跳起来往远处跑：对面这两秒里扔的全对着原地，站着不动就被连控
+	if p.ai_just_freed:
+		p.ai_just_freed = false
+		p.ai_target_x = 560.0 if p.pos.x < 480.0 else 400.0
+		cmd.jump = true
+		cmd.dir = ai_step_toward(p, p.ai_target_x, 6.0)
+		return cmd
+
+	# 躲：对面扔过来、还在半空的，往远离它的方向挪；快到头顶时顺手跳一下
+	for proj in projectiles:
+		if int(proj.from) == p.id:
+			continue
+		if not proj.has("ai_dodge"):
+			# 每一发只判一次躲不躲，八成会躲
+			proj.ai_dodge = _rng.randf() < 0.8
+		if not bool(proj.ai_dodge):
+			continue
+		var dx: float = float(proj.pos.x) - p.pos.x
+		if absf(dx) < 90.0 and float(proj.pos.y) < GROUND_Y - 20.0:
+			cmd.dir = -1.0 if dx > 0.0 else 1.0
+			if p.pos.x < 372.0 and cmd.dir < 0.0:
+				cmd.dir = 1.0   # 左边是门，别往门上撞
+			if p.pos.x > ARENA_RIGHT - 16.0 and cmd.dir > 0.0:
+				cmd.dir = -1.0  # 顶到右墙了，往回跑
+			cmd.jump = absf(dx) < 45.0 and float(proj.vel.y) > 0.0
+			return cmd
+
+	# 捡：右半场有掉落物就去够，越值钱越先去
+	var best_x := -1.0
+	var best_tier := 0
+	for it in items:
+		if float(it.pos.x) < 372.0:
+			continue
+		if int(it.tier) > best_tier or (int(it.tier) == best_tier and absf(float(it.pos.x) - p.pos.x) < absf(best_x - p.pos.x)):
+			best_tier = int(it.tier)
+			best_x = float(it.pos.x)
+	if best_x >= 0.0:
+		cmd.dir = ai_step_toward(p, best_x, 10.0)
+	else:
+		# 没东西捡就慢慢晃，别杵着像卡住了
+		if p.ai_target_x < 0.0 or absf(p.ai_target_x - p.pos.x) < 8.0:
+			p.ai_target_x = _rng.randf_range(400.0, 590.0)
+		cmd.dir = ai_step_toward(p, p.ai_target_x, 6.0)
+
+	# 扔：冷却好了再等一小会儿，不要机器般准时
+	if p.cooldown <= 0.0 and p.throw_timer <= 0.0 and p.ai_timer <= 0.0:
+		cmd.throw = true
+		p.ai_timer = _rng.randf_range(0.6, 1.4)
+	return cmd
 
 
 # ---------- 掉落物品 ----------
@@ -165,6 +227,8 @@ func _finish() -> void:
 		else:
 			p.fig.strike(CharSprite.Pose.MISS, 2.4)
 	show_banner(text, color)
+	# 曲子让位给哭声
+	fade_out_bgm(1.6)
 	Sfx.play(self, Sfx.blip(523.0, 784.0, 0.35, 0.4))
 	# 不管谁输谁赢都放这段哭，太好笑了。46 秒太长，只放开头，然后渐弱退出
 	var wait := 2.4

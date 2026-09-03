@@ -53,6 +53,11 @@ class PlayerState:
 	var throw_timer := -1.0   # >0 表示正在挥臂，归零那一刻才真的出手
 	var score := 0
 	var keys := {}
+	## 单人模式下 P2 交给电脑：下面几个是 AI 的小状态
+	var ai := false
+	var ai_target_x := -1.0
+	var ai_timer := 0.0
+	var ai_just_freed := false   # 眩晕刚解除的那一帧置位，AI 借此第一时间跳开
 
 
 ## 打开后在左上角列出还没到货的素材，方便对着清单催素材
@@ -75,12 +80,56 @@ var _shake_time := 0.0
 var _shake_amp := 0.0
 var _rng := RandomNumberGenerator.new()
 var _hud: CanvasLayer
+var _bgm: AudioStreamPlayer
 
 
 func _enter_tree() -> void:
 	# 子类各自实现 _ready，这里用延后调用挂公共的东西，省得三个阶段各写一遍
 	call_deferred("_setup_floor")
 	call_deferred("_setup_missing_art_hud")
+
+
+## 阶段被换掉 / 提前退出时把曲子停掉，别让它继续放到下一段去。
+func _exit_tree() -> void:
+	if _bgm != null and _bgm.playing:
+		_bgm.stop()
+
+
+# ---------- 背景音乐 ----------
+
+## 放本阶段的背景音乐，循环到阶段结束；文件不在就静默跳过。
+## 从 -40dB 淡入到 volume_db，免得一进场就炸耳朵。曲子见 Assets/Music/README.md。
+func play_bgm(path: String, volume_db := -8.0, fade_in := 0.8) -> void:
+	if _bgm != null:
+		_bgm.queue_free()
+		_bgm = null
+	if not ResourceLoader.exists(path):
+		return
+	var stream: AudioStream = load(path)
+	if stream == null:
+		return
+	# mp3/ogg 是 loop，wav 是 loop_mode（1 = 正向循环），两种都开一下
+	if "loop" in stream:
+		stream.set("loop", true)
+	if "loop_mode" in stream:
+		stream.set("loop_mode", 1)
+	_bgm = AudioStreamPlayer.new()
+	_bgm.stream = stream
+	_bgm.volume_db = -40.0
+	add_child(_bgm)
+	_bgm.play()
+	create_tween().tween_property(_bgm, "volume_db", volume_db, fade_in) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## 阶段收尾时把音乐淡掉，别一刀切。
+func fade_out_bgm(duration := 1.5) -> void:
+	if _bgm == null or not _bgm.playing:
+		return
+	var tw := create_tween()
+	tw.tween_property(_bgm, "volume_db", -40.0, duration) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(_bgm.stop)
 
 
 ## 电梯场景那块反光地板，三个阶段都铺上。
@@ -151,6 +200,25 @@ func throw_target_x(_player: PlayerState) -> float:
 	return 320.0
 
 
+## 单人模式下电脑操控的玩家每帧问这里要指令：{dir = -1/0/1, jump = bool, throw = bool}。
+## 基类什么都不做，各阶段按自己的玩法覆写。
+func ai_command(_p: PlayerState, _delta: float) -> Dictionary:
+	return {dir = 0.0, jump = false, throw = false}
+
+
+## 朝目标 x 走，到了附近就停，别在目标点上左右抖
+func ai_step_toward(p: PlayerState, target_x: float, tolerance := 6.0) -> float:
+	var dx := target_x - p.pos.x
+	if absf(dx) <= tolerance:
+		return 0.0
+	return 1.0 if dx > 0.0 else -1.0
+
+
+## 底部那行按键提示：单人模式下 P2 那半截换成"电脑"
+func p2_hint(keys_text: String) -> String:
+	return "P2：电脑" if Session.single_player else keys_text
+
+
 func _draw_back() -> void:
 	pass
 
@@ -173,6 +241,7 @@ func setup_players(x1: float, x2: float) -> void:
 		var p := PlayerState.new()
 		p.id = d.id
 		p.keys = d.keys
+		p.ai = Session.single_player and d.id == 2
 		p.pos = Vector2(d.x, GROUND_Y)
 		p.fig = make_character(d.character, d.color, d.facing, p.pos)
 		players.append(p)
@@ -209,18 +278,25 @@ func update_player(p: PlayerState, delta: float) -> void:
 		p.stun -= delta
 		if p.stun <= 0.0:
 			p.fig.set_stunned(false)
+			p.ai_just_freed = true
 
 	var dir := 0.0
 	var wants_jump := false
 	var wants_throw := false
 	if controls_enabled and p.stun <= 0.0:
-		if Input.is_physical_key_pressed(p.keys.left):
-			dir -= 1.0
-		if Input.is_physical_key_pressed(p.keys.right):
-			dir += 1.0
-		wants_jump = Input.is_physical_key_pressed(p.keys.jump)
-		wants_throw = Input.is_physical_key_pressed(p.keys.throw) \
-			or (p.id == 2 and Input.is_physical_key_pressed(KEY_KP_0))
+		if p.ai:
+			var cmd := ai_command(p, delta)
+			dir = float(cmd.get("dir", 0.0))
+			wants_jump = bool(cmd.get("jump", false))
+			wants_throw = bool(cmd.get("throw", false))
+		else:
+			if Input.is_physical_key_pressed(p.keys.left):
+				dir -= 1.0
+			if Input.is_physical_key_pressed(p.keys.right):
+				dir += 1.0
+			wants_jump = Input.is_physical_key_pressed(p.keys.jump)
+			wants_throw = Input.is_physical_key_pressed(p.keys.throw) \
+				or (p.id == 2 and Input.is_physical_key_pressed(KEY_KP_0))
 
 	p.vel.x = dir * MOVE_SPEED
 	if dir != 0.0:

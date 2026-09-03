@@ -35,11 +35,13 @@ func _on_choice_focused(choice_index: int) -> void:
 	choice_focused.emit(choice_index)
 
 
+## disabled_options 里的序号会灰掉、选不了（比如"结束游戏"），只是摆着看。
 func entree(
 	character_id: int,
 	expression_id: int,
 	dialogue_text: String,
 	options: Array[String] = [],
+	disabled_options: Array[int] = [],
 ) -> int:
 	# Sequential calls normally use await. The loop also makes accidental
 	# concurrent calls wait instead of replacing the dialogue currently shown.
@@ -52,6 +54,7 @@ func entree(
 		expression_id,
 		dialogue_text,
 		options,
+		disabled_options,
 	)
 	_busy = false
 	became_available.emit()
