@@ -38,6 +38,8 @@ const P2_DANCE_KEYS := [
 	{text = "↑   上箭头", keys = [KEY_UP]},
 	{text = "→   右箭头", keys = [KEY_RIGHT]},
 ]
+## 隐藏关可选的三首（曲库在 dance_phase.gd 的 SONGS 里）
+const HIDDEN_SONGS: Array[String] = ["不如跳舞", "秒針を噛む", "Levitating"]
 ## 单人模式下男生那一栏只有这一条，不用按
 const P2_AI_LINE := [{text = "由电脑控制", keys = []}]
 const THROW_RULES := [
@@ -527,6 +529,66 @@ func _run_full_story() -> void:
 		Dialogue.Character.NARRATOR,
 		Dialogue.ExpressionState.NORMAL,
 		"[center][font_size=20]—— 和解 ——[/font_size][/center]",
+	)
+
+	# 和解之后：不管怎么选，最后都得跳舞
+	_status.text = "完整流程：隐藏关前的选择"
+	var next := await Dialogue.entree(
+		Dialogue.Character.NPC0,
+		Dialogue.ExpressionState.SPEAKING,
+		"那……我们接下来干什么？",
+		["亲亲", "继续跳舞", "结束游戏"],
+	)
+	if next == 0:
+		next = 1 + await Dialogue.entree(
+			Dialogue.Character.NPC0,
+			Dialogue.ExpressionState.SPEAKING,
+			"爽！接下来干什么？",
+			["继续跳舞", "结束游戏"],
+		)
+	if next == 2:
+		# "结束游戏"灰着，只能选跳舞
+		await Dialogue.entree(
+			Dialogue.Character.NPC1,
+			Dialogue.ExpressionState.SPEAKING,
+			"真的不跳舞了吗？",
+			["继续跳舞", "结束游戏"],
+			[1],
+		)
+
+	# 隐藏关《不如跳舞》：先挑一首，跳完可以换一首接着跳，也可以真的退出回标题
+	_status.text = "完整流程：隐藏关 不如跳舞"
+	await _fade_out_anchor()
+	var hidden := LevelIntro.new()
+	add_child(hidden)
+	await hidden.run(0, "隐藏关：按键和规则同第二关", [], [], [], "", "《不如跳舞》")
+	var pick := await Dialogue.entree(
+		Dialogue.Character.NPC0,
+		Dialogue.ExpressionState.SPEAKING,
+		"跳哪首？",
+		HIDDEN_SONGS,
+	)
+	while pick >= 0 and pick < HIDDEN_SONGS.size():
+		var song: String = HIDDEN_SONGS[pick]
+		reset_camera(0.0)
+		var encore := _play_anchor(
+			DANCE_PHASE, "隐藏关：%s" % song,
+			func(phase: Node) -> void: phase.song_name = song,
+		)
+		await encore.phase_finished
+		var again: Array[String] = HIDDEN_SONGS.duplicate()
+		again.append("退出游戏")
+		pick = await Dialogue.entree(
+			Dialogue.Character.NPC1,
+			Dialogue.ExpressionState.SPEAKING,
+			"再来一首？",
+			again,
+		)
+		await _fade_out_anchor()
+	await Dialogue.entree(
+		Dialogue.Character.NARRATOR,
+		Dialogue.ExpressionState.NORMAL,
+		"[center][font_size=20]—— 完 ——[/font_size][/center][br][center]坐电梯不如跳舞。[/center]",
 	)
 
 	await _fade_out_anchor(1.2)
