@@ -37,8 +37,9 @@ const PATHS := {
 	"红箭头": {path = "res://Assets/Branch/红箭头.png", rect = Rect2(42, 10, 48, 93)},
 	# 阶段一场地中间的隔断，教室门正好
 	"隔断": {path = "res://Assets/Branch/door1_副本.png", rect = Rect2(0, 0, 127, 255)},
-	# 还没到货，先用中性灰占位
-	"怪兽": {path = "res://Assets/Branch/电梯怪兽.png", rect = Rect2()},
+	# 阶段三的电梯怪兽：24 帧横排、每帧 400×350，怎么切见 Boss/boss_sprite.gd。
+	# 这里登记的 rect 是本体站起来那一帧，给 draw_sprite 单张画时用。
+	"怪兽": {path = "res://Assets/Branch/电梯.png", rect = Rect2(7 * 400 + 110, 32, 187, 318)},
 }
 ## 命中迸溅、眩晕、冲击波、落点预警都改用粒子 + 文字了，见 phase_fx.gd，不再需要贴图。
 

@@ -153,7 +153,7 @@ func _spawn_item() -> void:
 	var tier := 1
 	if roll > 0.85:
 		tier = 5
-	elif roll > 0.55:
+	elif roll > 0.05:
 		tier = 3
 	var index := Art.random_item(_rng, tier)
 	# 障碍物顶上落不到，只在两侧半场掉

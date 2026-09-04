@@ -322,7 +322,9 @@ func _run_full_story() -> void:
 	add_child(menu)
 	var mode: int = await menu.mode_chosen
 	if mode == TitleMenu.Mode.DEV:
-		# 菜单里按了 F8：回到按 1～9 单独测试各段的开发者模式
+		# 菜单里按了 F8：回到按 1～9 单独测试各段的开发者模式。
+		# 开发者模式按单人跑：P2 交给电脑，一个人就能把每一关测完
+		Session.single_player = true
 		_status.text = "开发者模式：按 1～9 选择测试内容（9/J/L = 跳舞试玩曲）"
 		_status.visible = true
 		$TestUI/Help.visible = true
