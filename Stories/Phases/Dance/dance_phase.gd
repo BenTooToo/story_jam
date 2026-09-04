@@ -26,6 +26,7 @@ const SCROLL_SPEED := 140.0
 ## 花活。三样都只改画法，谱面和判定时刻一个都不动，每首曲子在 SONGS 里的 flair 字段各自开：
 ## - 快慢刀（flair.speeds = true）：同一句（phrase 小节）里的箭头共用一个速度倍率，
 ##   副歌按 FLAIR_SPEEDS 轮，主歌固定 FLAIR_VERSE_SPEED。快的晚出现、慢的早出现，到判定线的时刻不变。
+##   写 "all" 的话主歌也跟着轮，不再固定慢速。
 ## - 反向箭头（flair.spin = "chorus" 副歌隔一句；或在某个段落里写 spin = true 整段都转）：
 ##   箭头进场时是倒的，往上飞的路上转正，到判定线前 FLIP_LOCK 秒就锁死不动了。
 ## - 拖尾（flair.trail = "all" / "chorus"）：箭头后面跟几个越来越淡的影子，越快的拖得越长。
@@ -63,7 +64,8 @@ const PATTERNS := {
 	"双连打": [0, 0, 0, 0], # 连打，但每下同时来两个方向（两个箭头一样判、一样画）；人物动作在两个方向之间交替
 	"乱序": [0, 1, 2, 3],   # 每个都不一样：方向逐个随机、连续两个不重复，没有规律可记
 }
-## 段落里只要用了双连打或乱序，整段都不变速、不旋转进场——三样在最快的段落里不能叠，叠了太难
+## 段落里只要用了双连打或乱序，整段都不变速；每拍都打（per_bar = 4）的段落还不旋转进场——
+## 三样在最快的段落里不能叠，叠了太难。慢的段落（半拍）可以乱序 + 旋转。
 const PAIR_PATTERN := "双连打"
 const RANDOM_PATTERN := "乱序"
 
@@ -121,9 +123,10 @@ const SONGS := {
 	# 第 1 拍在它后面一拍 = 7.831 秒（实机对过：按 6.908 快了两拍）。全长 259 秒，第 134 小节起没声，取 132。
 	# 段落是按每小节的音量曲线切的，不是 4 的倍数：第一段副歌 1:17 进（第 37 小节）只有 9 小节，
 	# 108~111 小节整段空掉是原曲的停顿，那几小节每小节只打一下。
-	# 最难的一首：副歌 1 旋转进场，副歌 2 和副歌 3 前半一次来两个，桥段（慢）和最后的副歌（最快）每个都不一样。
+	# 最难的一首（2026-09 第二版，第一版实机嫌简单）：单独的箭头一律旋转进场、主歌一开始就每拍都打、
+	# 快慢刀全曲都轮；所有副歌都是一次来两个；桥段慢，乱序 + 旋转；停顿那几下单独的也转。
 	"秒針を噛む": {
-		flair = {speeds = true, trail = "all"},   # 旋转只在副歌 1，写在那一段上
+		flair = {speeds = "all", trail = "all"},
 		bpm = 130.0,
 		first_beat = 7.831,
 		bars = 132,
@@ -131,16 +134,16 @@ const SONGS := {
 		video = "res://Assets/Music/秒針を噛む.ogv",
 		chorus = [[37, 46], [69, 86], [97, 108], [112, 132]],
 		sections = [
-			{bars = 4, per_bar = 2, patterns = ["连打"], phrase = 4},                           # 钢琴前奏
-			{bars = 17, per_bar = 2, patterns = ["连打", "两两"], phrase = 4},                  # 主歌
-			{bars = 16, per_bar = 2, patterns = ["连打", "交替"], phrase = 4},                  # 预副歌，音量已经上来
-			{bars = 9, per_bar = 4, patterns = ["两两"], phrase = 4, spin = true},              # 副歌 1（1:17）：两两一组，旋转进场
-			{bars = 23, per_bar = 2, patterns = ["连打", "两两", "交替"], phrase = 4},          # 主歌 2 + 预副歌
-			{bars = 17, per_bar = 4, patterns = ["两两", "双连打"], phrase = 4},                # 副歌 2：一次来两个
-			{bars = 11, per_bar = 2, patterns = ["乱序"], phrase = 4},                          # 桥段：慢，每个都不一样
-			{bars = 11, per_bar = 4, patterns = ["双连打", "两两"], phrase = 2},                # 副歌 3 前半：一次来两个
-			{bars = 4, per_bar = 1, patterns = ["连打"], phrase = 4},                           # 停顿：每小节只打一下
-			{bars = 20, per_bar = 4, patterns = ["乱序"], phrase = 2},                          # 最后的副歌：最快 + 每个都不一样，全曲最难
+			{bars = 4, per_bar = 2, patterns = ["连打"], phrase = 4, spin = true},              # 钢琴前奏：半拍，转着进
+			{bars = 17, per_bar = 4, patterns = ["连打", "两两"], phrase = 4, spin = true},     # 主歌：一上来就每拍都打，旋转进场
+			{bars = 16, per_bar = 4, patterns = ["两两", "交替"], phrase = 4, spin = true},     # 预副歌：加交替
+			{bars = 9, per_bar = 4, patterns = ["双连打"], phrase = 4},                         # 副歌 1（1:17）：一次来两个
+			{bars = 23, per_bar = 4, patterns = ["两两", "交替", "扫过"], phrase = 4, spin = true},  # 主歌 2 + 预副歌：图案更杂
+			{bars = 17, per_bar = 4, patterns = ["双连打"], phrase = 4},                        # 副歌 2：一次来两个
+			{bars = 11, per_bar = 2, patterns = ["乱序"], phrase = 4, spin = true},             # 桥段：慢，乱序 + 旋转
+			{bars = 11, per_bar = 4, patterns = ["双连打"], phrase = 2},                        # 副歌 3 前半：一次来两个
+			{bars = 4, per_bar = 1, patterns = ["连打"], phrase = 4, spin = true},              # 停顿：每小节只打一下，转着进
+			{bars = 20, per_bar = 4, patterns = ["双连打"], phrase = 2},                        # 最后的副歌：一次来两个，换得最勤
 		],
 	},
 	# Dua Lipa《Levitating》。103 BPM，前面 2 秒静音，鼓进来（10.96 秒）后再数一拍才是第 1 拍。
@@ -391,7 +394,9 @@ func _build_chart() -> Array:
 	var bar := 0
 	var root := rng.randi_range(0, 3)
 	var flair: Dictionary = song.get("flair", {})
-	var speeds_on: bool = bool(flair.get("speeds", false))
+	var speeds_raw = flair.get("speeds", false)   # true = 只在副歌轮；"all" = 全曲都轮
+	var speeds_everywhere: bool = speeds_raw is String and speeds_raw == "all"
+	var speeds_on: bool = speeds_everywhere or (speeds_raw is bool and speeds_raw)
 	var spin_mode := String(flair.get("spin", ""))
 	var trail_mode := String(flair.get("trail", ""))
 	var chorus_phrases := 0        # 副歌里数到第几句，用来轮速度、隔句反向
@@ -400,8 +405,9 @@ func _build_chart() -> Array:
 		var per_bar: int = int(sec.per_bar)
 		var names: Array = sec.patterns
 		var phrase: int = int(sec.phrase)
-		# 这一段有双连打 / 乱序的话，整段速度固定、不旋转
+		# 这一段有双连打 / 乱序的话，整段速度固定；要是还每拍都打，连旋转也不要
 		var hard_sec: bool = names.has(PAIR_PATTERN) or names.has(RANDOM_PATTERN)
+		var no_spin: bool = hard_sec and per_bar >= 4
 		var step_beats := float(BEATS_PER_BAR) / float(per_bar)
 		var b := 0
 		while b < int(sec.bars):
@@ -424,11 +430,14 @@ func _build_chart() -> Array:
 			var in_chorus := _in_chorus(bar)
 			var speed := 1.0
 			if speeds_on and not hard_sec:
-				speed = float(FLAIR_SPEEDS[chorus_phrases % FLAIR_SPEEDS.size()]) if in_chorus else FLAIR_VERSE_SPEED
-			var flip: bool = not hard_sec and (bool(sec.get("spin", false)) \
+				if in_chorus or speeds_everywhere:
+					speed = float(FLAIR_SPEEDS[chorus_phrases % FLAIR_SPEEDS.size()])
+				else:
+					speed = FLAIR_VERSE_SPEED
+			var flip: bool = not no_spin and (bool(sec.get("spin", false)) \
 				or (spin_mode == "chorus" and in_chorus and chorus_phrases % 2 == 1))
 			var trail: bool = trail_mode == "all" or (trail_mode == "chorus" and in_chorus)
-			if in_chorus:
+			if in_chorus or speeds_everywhere:
 				chorus_phrases += 1
 			# 双连打的第二个方向：和根方向错开，根方向换的时候它也跟着重抽
 			var twin := (root + rng.randi_range(1, 3)) % 4
