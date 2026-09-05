@@ -19,7 +19,7 @@ enum ExpressionState {
 	SPEAKING,
 }
 
-const DIALOGUE_BOX_SCENE := preload("res://Stories/Shared/Dialogue/dialogue_box.tscn")
+const DIALOGUE_BOX_SCENE := preload("res://Stories/Dialogue/dialogue_box.tscn")
 
 var _dialogue_box
 var _busy := false

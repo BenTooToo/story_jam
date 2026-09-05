@@ -13,7 +13,7 @@ config_version=5
 config/name="Story_jam"
 run/main_scene="uid://bcll3kva0ja7v"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
 
 [autoload]
 

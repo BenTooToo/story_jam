@@ -1,0 +1,58 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://Stories/Effects/monologue_fx.gd" id="1_script"]
+[ext_resource type="Shader" path="res://Stories/Effects/monologue_beam.gdshader" id="2_beam"]
+[ext_resource type="AudioStream" path="res://Assets/Sound Effects/open light.mp3" id="3_light_on"]
+
+[sub_resource type="Gradient" id="Gradient_light"]
+offsets = PackedFloat32Array(0, 0.48, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.72, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_light"]
+gradient = SubResource("Gradient_light")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_beam"]
+shader = ExtResource("2_beam")
+shader_parameter/target_uv = Vector2(0.5, 0.55)
+shader_parameter/intensity = 0.0
+shader_parameter/top_width = 0.012
+shader_parameter/head_width = 0.09
+shader_parameter/edge_feather = 0.025
+shader_parameter/end_feather = 0.035
+shader_parameter/pulse_amount = 0.025
+shader_parameter/pulse_speed = 0.9
+shader_parameter/light_color = Color(1, 0.88, 0.62, 1)
+
+[node name="MonologueFX" type="Node2D"]
+script = ExtResource("1_script")
+light_on_sound = ExtResource("3_light_on")
+
+[node name="WorldBlackout" type="CanvasModulate" parent="."]
+
+[node name="ActorLight" type="PointLight2D" parent="."]
+enabled = false
+texture = SubResource("GradientTexture2D_light")
+texture_scale = 1.05
+color = Color(1, 0.88, 0.68, 1)
+energy = 0.0
+blend_mode = 0
+range_item_cull_mask = 2
+
+[node name="SwitchSound" type="AudioStreamPlayer" parent="."]
+
+[node name="BeamLayer" type="CanvasLayer" parent="."]
+layer = 80
+
+[node name="Beam" type="ColorRect" parent="BeamLayer"]
+material = SubResource("ShaderMaterial_beam")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

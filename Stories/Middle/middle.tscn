@@ -12,6 +12,7 @@
 [ext_resource type="AudioStream" uid="uid://cqxfeshujoeta" path="res://Assets/Sound Effects/电梯门移动.mp3" id="8_doors"]
 [ext_resource type="AudioStream" uid="uid://trf00tqj0q2m" path="res://Assets/Sound Effects/哐当.mp3" id="9_clank"]
 [ext_resource type="Shader" uid="uid://diw4b5iye7y1" path="res://Assets/Theme/light_shafts.gdshader" id="10_shafts"]
+[ext_resource type="Script" path="res://Stories/Effects/elevator_breakdown_fx.gd" id="11_fx"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5wckm"]
 atlas = ExtResource("2_xvhka")
@@ -167,6 +168,9 @@ position = Vector2(451.57245, 102.75)
 scale = Vector2(0.5289855, 0.5289855)
 texture = ExtResource("5_ajomx")
 
+[node name="ElevatorBreakdownFX" type="Node2D" parent="Elevator"]
+script = ExtResource("11_fx")
+
 [node name="Label" type="Label" parent="Elevator/FloorDisplay" unique_id=758116005]
 offset_left = -23.767097
 offset_top = -29.773973
@@ -188,6 +192,7 @@ color = Color(0, 0, 0, 1)
 
 [node name="SfxArrive" type="AudioStreamPlayer" parent="." unique_id=881031023]
 stream = ExtResource("7_arrive")
+volume_db = -10.0
 
 [node name="SfxDoorMove" type="AudioStreamPlayer" parent="." unique_id=1927785929]
 stream = ExtResource("8_doors")

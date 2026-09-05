@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dnfysfibn7bs0"
-path="res://.godot/imported/呕吐3.png-73723fba7b0fc94161726d18fcb1ac07.ctex"
+uid="uid://d0j8gid8ig2w3"
+path="res://.godot/imported/呕吐物1.png-6fb5188a6029d91cb0d2d72a81a083b8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Assets/caracter/lizard_girl/puke/呕吐3.png"
-dest_files=["res://.godot/imported/呕吐3.png-73723fba7b0fc94161726d18fcb1ac07.ctex"]
+source_file="res://Assets/caracter/lizard_girl/puke/呕吐物1.png"
+dest_files=["res://.godot/imported/呕吐物1.png-6fb5188a6029d91cb0d2d72a81a083b8.ctex"]
 
 [params]
 

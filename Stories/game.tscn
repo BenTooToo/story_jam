@@ -1,7 +1,8 @@
-[gd_scene format=3 uid="uid://bcll3kva0ja7v"]
+[gd_scene load_steps=4 format=3 uid="uid://bcll3kva0ja7v"]
 
 [ext_resource type="Script" uid="uid://gyt5ii8njcse" path="res://Stories/game.gd" id="1_game"]
 [ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="2_font"]
+[ext_resource type="PackedScene" path="res://Stories/Effects/monologue_fx.tscn" id="3_monologue"]
 
 [node name="Game" type="Node2D" unique_id=1984428139]
 script = ExtResource("1_game")
@@ -10,6 +11,41 @@ script = ExtResource("1_game")
 position = Vector2(320, 180)
 
 [node name="AnchorHost" type="Node2D" parent="." unique_id=216436057]
+
+[node name="MonologueFX" parent="." instance=ExtResource("3_monologue")]
+
+[node name="IntroUI" type="CanvasLayer" parent="."]
+layer = 110
+
+[node name="Black" type="ColorRect" parent="IntroUI"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Message" type="Label" parent="IntroUI/Black"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -24.0
+offset_right = 250.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 18
+text = "请佩戴耳机以获得最好的体验"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TestUI" type="CanvasLayer" parent="." unique_id=1060471356]
 layer = 90
@@ -24,7 +60,7 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 15
-text = "[1] 开场锚点   [2] 中间锚点   [3] 结尾锚点   [4] 开场 + 对话测试"
+text = "[1～4] 场景/对话 [L] 爱河分支 [V] 反胃分支 [H] 爱心 [M] 变身 [0] 呕吐"
 
 [node name="Status" type="Label" parent="TestUI" unique_id=860342470]
 offset_left = 8.0

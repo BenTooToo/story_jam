@@ -3,12 +3,13 @@ extends CanvasLayer
 signal entry_completed(choice_index: int)
 signal choice_focused(choice_index: int)
 
-const NPC0_NORMAL := preload("res://Assets/ROMART/npc0.png")
-const NPC0_SPEAKING := preload("res://Assets/ROMART/npc0说话.png")
-const NPC1_NORMAL := preload("res://Assets/ROMART/npc1.png")
-const NPC1_SPEAKING := preload("res://Assets/ROMART/npc1说话.png")
+const NPC0_NORMAL := preload("res://Assets/caracter/lizard_girl/pp/npc0.png")
+const NPC0_SPEAKING := preload("res://Assets/caracter/lizard_girl/pp/npc0说话.png")
+const NPC1_NORMAL := preload("res://Assets/caracter/cop/pp/npc1.png")
+const NPC1_SPEAKING := preload("res://Assets/caracter/cop/pp/npc1说话.png")
 const NPC0_TALK_SOUND := preload("res://Assets/Sound Effects/女生_5.wav")
 const NPC1_TALK_SOUND := preload("res://Assets/Sound Effects/男生_11.wav")
+const NARRATOR_TALK_SOUND := preload("res://Assets/Sound Effects/旁白_7.wav")
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
 const TALK_DIRECTIONS: Array[Vector2] = [
 	Vector2.LEFT,
@@ -123,14 +124,15 @@ func _type_text(generation: int) -> void:
 
 
 func _run_talking_visuals(generation: int) -> void:
-	if not _talking_visuals_enabled:
+	if not _talking_visuals_enabled and _talk_sound.stream != NARRATOR_TALK_SOUND:
 		return
 
 	while _typing and generation == _generation and _active:
 		_mouth_open = not _mouth_open
-		_portrait.texture = _portrait_open if _mouth_open else _portrait_closed
-		var direction: Vector2 = TALK_DIRECTIONS.pick_random()
-		_portrait.position = _portrait_home + direction * talk_move_distance
+		if _talking_visuals_enabled:
+			_portrait.texture = _portrait_open if _mouth_open else _portrait_closed
+			var direction: Vector2 = TALK_DIRECTIONS.pick_random()
+			_portrait.position = _portrait_home + direction * talk_move_distance
 		if _mouth_open:
 			_play_talk_sound()
 		await get_tree().create_timer(talk_frame_delay).timeout
@@ -251,7 +253,9 @@ func _update_portrait(character_id: int, expression_id: int) -> void:
 			_talking_visuals_enabled = false
 			_portrait_closed = null
 			_portrait_open = null
-			_talk_sound.stream = null
+			_talk_sound.stream = (
+				NARRATOR_TALK_SOUND if character_id == Dialogue.Character.NARRATOR else null
+			)
 			_portrait.hide()
 			_set_text_rect(42.0, 222.0, 554.0, 104.0)
 	_reset_talking_visuals()

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://rw36k1rb5jk7"
+path="res://.godot/imported/sfx_heart_single.mp3-8b42a6fa5b286a33f9b7fecca887cd2d.mp3str"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/sfx_heart_single.mp3"
+dest_files=["res://.godot/imported/sfx_heart_single.mp3-8b42a6fa5b286a33f9b7fecca887cd2d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
