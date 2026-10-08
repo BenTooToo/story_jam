@@ -35,6 +35,10 @@ func _on_choice_focused(choice_index: int) -> void:
 	choice_focused.emit(choice_index)
 
 
+func set_npc0_transformed(transformed: bool) -> void:
+	_dialogue_box.npc0_transformed = transformed
+
+
 func entree(
 	character_id: int,
 	expression_id: int,

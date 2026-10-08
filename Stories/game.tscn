@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://bcll3kva0ja7v"]
+[gd_scene load_steps=5 format=3 uid="uid://bcll3kva0ja7v"]
 
 [ext_resource type="Script" uid="uid://gyt5ii8njcse" path="res://Stories/game.gd" id="1_game"]
 [ext_resource type="FontFile" uid="uid://b1ncw0ltceat3" path="res://Assets/Theme/像素字体.ttf" id="2_font"]
 [ext_resource type="PackedScene" path="res://Stories/Effects/monologue_fx.tscn" id="3_monologue"]
+[ext_resource type="AudioStream" path="res://Assets/Sound Effects/open light.mp3" id="4_light_switch"]
 
 [node name="Game" type="Node2D" unique_id=1984428139]
 script = ExtResource("1_game")
@@ -12,10 +13,13 @@ position = Vector2(320, 180)
 
 [node name="AnchorHost" type="Node2D" parent="." unique_id=216436057]
 
+[node name="BlackoutSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("4_light_switch")
+
 [node name="MonologueFX" parent="." instance=ExtResource("3_monologue")]
 
 [node name="IntroUI" type="CanvasLayer" parent="."]
-layer = 110
+layer = 95
 
 [node name="Black" type="ColorRect" parent="IntroUI"]
 visible = false
@@ -48,6 +52,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="TestUI" type="CanvasLayer" parent="." unique_id=1060471356]
+visible = false
 layer = 90
 
 [node name="Help" type="Label" parent="TestUI" unique_id=31929622]
@@ -60,7 +65,7 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 15
-text = "[1～4] 场景/对话 [L] 爱河分支 [V] 反胃分支 [H] 爱心 [M] 变身 [0] 呕吐"
+text = ""
 
 [node name="Status" type="Label" parent="TestUI" unique_id=860342470]
 offset_left = 8.0

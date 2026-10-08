@@ -5,6 +5,7 @@ const SHAFT_BACKGROUND_SCENE := preload(
 	"res://Assets/envirment/tiles/ElevatorShaftBackground.tscn"
 )
 const HEARTBEAT_SOUND := preload("res://Assets/Sound Effects/sfx_heart_single.mp3")
+const ROOF_SCENE := preload("res://Stories/Effects/elevator_roof.gd")
 const FEMALE_FALL_TEXTURES: Array[Texture2D] = [
 	preload("res://Assets/caracter/lizard_girl/liz_falling/女下落1.png"),
 	preload("res://Assets/caracter/lizard_girl/liz_falling/女下落2.png"),
@@ -14,6 +15,11 @@ const MALE_FALL_TEXTURES: Array[Texture2D] = [
 	preload("res://Assets/caracter/cop/cop_falling/男下落1.png"),
 	preload("res://Assets/caracter/cop/cop_falling/男下落2.png"),
 	preload("res://Assets/caracter/cop/cop_falling/男下落3.png"),
+]
+const LIZARD_FALL_TEXTURES: Array[Texture2D] = [
+	preload("res://Assets/caracter/lizard_girl/liz_falling/蜥蜴下落1.png"),
+	preload("res://Assets/caracter/lizard_girl/liz_falling/蜥蜴下落2.png"),
+	preload("res://Assets/caracter/lizard_girl/liz_falling/蜥蜴下落3.png"),
 ]
 
 const CABIN_RECT := Rect2(234.0, 93.0, 177.0, 199.0)
@@ -43,6 +49,11 @@ var _shaft_offset := 0.0
 var _shaft_speed := 0.0
 var _shaft_target_speed := 0.0
 var _heartbeat_player: AudioStreamPlayer
+var _story_foreground_states: Array[Dictionary] = []
+var _story_fall_states: Array[Dictionary] = []
+var _roof: Node2D
+var _roof_foreground_states: Array[Dictionary] = []
+var _roof_woman_fall_frames: SpriteFrames
 
 
 func _ready() -> void:
@@ -174,6 +185,193 @@ func play_drop(duration := 1.05) -> void:
 	_shaft_background.visible = previous_visibility
 	_shaft_target_speed = previous_speed
 	_restore_drop_foreground(foreground_states)
+
+
+func start_story_drop(man: AnimatedSprite2D) -> void:
+	if _shaft_background == null:
+		return
+
+	_story_foreground_states = _hide_drop_foreground()
+	_shaft_background.show()
+	_shaft_target_speed = shaft_max_speed
+	_story_fall_states = _set_falling_poses(true)
+
+	# 保持原来的上移速度，但持续到男人完全离开屏幕。
+	var rise := create_tween()
+	rise.tween_property(man, "position:y", -190.0, 1.7) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await rise.finished
+	man.hide()
+
+
+func finish_story_drop(returning_man: Sprite2D) -> void:
+	# 减速开始时把蜥蜴人锁定为下落动画的最后一帧。
+	_show_landing_poses(_story_fall_states)
+	var slowdown := create_tween()
+	slowdown.tween_property(self, "_shaft_target_speed", 0.0, 2.2) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await slowdown.finished
+
+	_shaft_target_speed = 0.0
+	_shaft_speed = 0.0
+	_restore_drop_foreground(_story_foreground_states)
+	await get_tree().create_timer(2.0).timeout
+
+	# 使用场景顶部预埋的独立男人图，匀速穿过并离开屏幕。
+	if is_instance_valid(returning_man):
+		returning_man.position.y = -150.0
+		returning_man.show()
+		var fall := create_tween()
+		fall.tween_property(returning_man, "position:y", 520.0, 2.65) \
+			.set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+		await fall.finished
+		returning_man.queue_free()
+
+	_story_foreground_states.clear()
+	_story_fall_states.clear()
+
+
+func play_woman_jump(character: AnimatedSprite2D) -> void:
+	if not is_instance_valid(character):
+		return
+
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	frames.add_animation(&"jump")
+	frames.set_animation_loop(&"jump", true)
+	frames.set_animation_speed(&"jump", 8.0)
+	# The last texture is the landing pose; the jump never reaches the ground.
+	for index in range(FEMALE_FALL_TEXTURES.size() - 1):
+		frames.add_frame(&"jump", FEMALE_FALL_TEXTURES[index])
+	character.sprite_frames = frames
+	character.flip_h = false
+	character.play(&"jump")
+	character.z_index = 110
+
+	var start := character.position
+	var finish := start + Vector2(125.0, 260.0)
+	var jump := create_tween()
+	jump.tween_method(
+		_set_jump_progress.bind(character, start, finish),
+		0.0,
+		1.0,
+		1.15,
+	).set_trans(Tween.TRANS_LINEAR)
+	await jump.finished
+	character.hide()
+
+
+func play_rooftop_landing(woman: AnimatedSprite2D, camera: Camera2D) -> void:
+	if not is_instance_valid(woman) or not is_instance_valid(camera) or _shaft_background == null:
+		return
+	var camera_home := camera.global_position
+	_roof_foreground_states = _hide_drop_foreground()
+	for node_name in ["ElevatorCar", "LightShafts"]:
+		var item := get_parent().get_node_or_null(node_name) as CanvasItem
+		if item != null:
+			_roof_foreground_states.append({"item": item, "visible": item.visible})
+			item.hide()
+	_shaft_background.modulate.a = 1.0
+	_shaft_background.show()
+	_shaft_target_speed = 250.0
+	_roof = ROOF_SCENE.new()
+	_roof.name = "ElevatorRoof"
+	_roof.z_index = 1
+	get_parent().add_child(_roof)
+
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	frames.add_animation(&"fall")
+	frames.set_animation_loop(&"fall", true)
+	frames.set_animation_speed(&"fall", 8.0)
+	frames.add_frame(&"fall", FEMALE_FALL_TEXTURES[0])
+	frames.add_frame(&"fall", FEMALE_FALL_TEXTURES[1])
+	frames.add_animation(&"land")
+	frames.add_frame(&"land", FEMALE_FALL_TEXTURES[2])
+	_roof_woman_fall_frames = frames
+	woman.sprite_frames = frames
+	woman.z_index = 2
+	woman.play(&"fall")
+	woman.position = Vector2(290.0, 216.0)
+	var rise := create_tween().set_parallel(true)
+	rise.tween_property(woman, "position:y", -85.0, 1.7) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rise.tween_property(camera, "global_position", camera_home + Vector2(0.0, -205.0), 2.1) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await rise.finished
+	var land := create_tween().set_parallel(true)
+	land.tween_property(woman, "position:y", 215.0, 2.65) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	land.tween_property(camera, "global_position", camera_home, 2.65) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	land.tween_property(self, "_shaft_target_speed", 28.0, 2.2) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await land.finished
+	woman.play(&"land")
+
+
+func play_rooftop_man_fall() -> AnimatedSprite2D:
+	var man := AnimatedSprite2D.new()
+	man.name = "FallingMan"
+	man.position = Vector2(358.0, -90.0)
+	man.scale = Vector2.ONE * 0.55
+	man.z_index = 2
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	frames.add_animation(&"fall")
+	frames.set_animation_loop(&"fall", true)
+	frames.set_animation_speed(&"fall", 8.0)
+	frames.add_frame(&"fall", MALE_FALL_TEXTURES[0])
+	frames.add_frame(&"fall", MALE_FALL_TEXTURES[1])
+	frames.add_animation(&"land")
+	frames.add_frame(&"land", MALE_FALL_TEXTURES[2])
+	man.sprite_frames = frames
+	get_parent().get_node("NPCs").add_child(man)
+	man.play(&"fall")
+	var fall := create_tween()
+	fall.tween_property(man, "position:y", 215.0, 0.65) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await fall.finished
+	man.play(&"land")
+	return man
+
+
+func play_rooftop_second_breakdown(woman: AnimatedSprite2D, camera: Camera2D) -> void:
+	if not is_instance_valid(woman) or not is_instance_valid(camera) or not is_instance_valid(_roof):
+		return
+	var roof_home := _roof.position
+	var camera_home := camera.global_position
+	play_sparks(Vector2(367.0, 277.0), 28)
+	_shaft_target_speed = 600.0
+	var shake := create_tween()
+	for index in 9:
+		var direction := -1.0 if index % 2 == 0 else 1.0
+		shake.tween_property(_roof, "position", roof_home + Vector2(direction * 3.0, 2.0), 0.045)
+		shake.parallel().tween_property(camera, "global_position", camera_home + Vector2(direction * 2.0, 0.0), 0.045)
+	shake.tween_property(_roof, "position", roof_home + Vector2(0.0, 12.0), 0.1)
+	shake.parallel().tween_property(camera, "global_position", camera_home, 0.1)
+	await shake.finished
+	woman.sprite_frames = _roof_woman_fall_frames
+	woman.play(&"fall")
+	var plunge := create_tween().set_parallel(true)
+	plunge.tween_property(woman, "position", woman.position + Vector2(-15.0, 430.0), 1.15) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	plunge.tween_property(woman, "rotation", -0.35, 1.15)
+	plunge.tween_property(_roof, "position:y", roof_home.y + 110.0, 1.2) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await plunge.finished
+	woman.hide()
+
+
+func _set_jump_progress(
+	progress: float,
+	character: AnimatedSprite2D,
+	start: Vector2,
+	finish: Vector2,
+) -> void:
+	var jump_position := start.lerp(finish, progress)
+	jump_position.y -= sin(progress * PI) * 72.0
+	character.position = jump_position
 
 
 func _setup_visual_layers() -> void:
@@ -403,7 +601,7 @@ func _spawn_shock_ghost(
 	tween.chain().tween_callback(ghost.queue_free)
 
 
-func _set_falling_poses() -> Array[Dictionary]:
+func _set_falling_poses(lizard_woman := false) -> Array[Dictionary]:
 	var states: Array[Dictionary] = []
 	var characters := _characters()
 	for index in characters.size():
@@ -414,7 +612,9 @@ func _set_falling_poses() -> Array[Dictionary]:
 			"animation": character.animation,
 			"frame": character.frame,
 		})
-		var fall_textures := FEMALE_FALL_TEXTURES if index == 0 else MALE_FALL_TEXTURES
+		var fall_textures := MALE_FALL_TEXTURES
+		if index == 0:
+			fall_textures = LIZARD_FALL_TEXTURES if lizard_woman else FEMALE_FALL_TEXTURES
 		var frames := SpriteFrames.new()
 		frames.remove_animation(&"default")
 		frames.add_animation(&"fall_loop")

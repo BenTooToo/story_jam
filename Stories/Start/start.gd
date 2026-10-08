@@ -33,6 +33,9 @@ const MUTATION_FX := preload("res://Stories/Effects/mutation_fx.gd")
 @onready var _sfx_door_move: AudioStreamPlayer = $SfxDoorMove
 @onready var _sfx_clank: AudioStreamPlayer = $SfxClank
 @onready var _breakdown_fx: ElevatorBreakdownFX = $Elevator/ElevatorBreakdownFX
+@onready var _returning_man: Sprite2D = get_node_or_null(
+	"Elevator/NPCs/NPC1Return"
+) as Sprite2D
 
 var _left_door_x: float
 var _right_door_x: float
@@ -164,6 +167,10 @@ func play_mutation(character: AnimatedSprite2D = null) -> void:
 	await _mutation_fx.play(character)
 
 
+func play_reversion() -> void:
+	await _mutation_fx.revert()
+
+
 func stop_mutation() -> void:
 	_mutation_fx.stop()
 
@@ -193,6 +200,45 @@ func play_breakdown() -> void:
 	await shake.finished
 	_elevator.position = home
 	await _breakdown_fx.play_drop()
+
+
+func start_story_breakdown(man: AnimatedSprite2D) -> void:
+	# 先让电梯抖动并闪出火花，再进入持续的高速坠落段落。
+	_breakdown_fx.play_sparks()
+	var home := _elevator.position
+	var shake := create_tween()
+	for index in 10:
+		var direction := -1.0 if index % 2 == 0 else 1.0
+		shake.tween_property(
+			_elevator,
+			"position",
+			home + Vector2(direction * 3.0, 0.0),
+			0.04,
+		)
+	shake.tween_property(_elevator, "position", home, 0.04)
+	await shake.finished
+	_elevator.position = home
+	await _breakdown_fx.start_story_drop(man)
+
+
+func finish_story_breakdown() -> void:
+	await _breakdown_fx.finish_story_drop(_returning_man)
+
+
+func play_woman_jump(character: AnimatedSprite2D) -> void:
+	await _breakdown_fx.play_woman_jump(character)
+
+
+func play_rooftop_landing(character: AnimatedSprite2D, camera: Camera2D) -> void:
+	await _breakdown_fx.play_rooftop_landing(character, camera)
+
+
+func play_rooftop_man_fall() -> AnimatedSprite2D:
+	return await _breakdown_fx.play_rooftop_man_fall()
+
+
+func play_rooftop_second_breakdown(character: AnimatedSprite2D, camera: Camera2D) -> void:
+	await _breakdown_fx.play_rooftop_second_breakdown(character, camera)
 
 
 func eject_character(character: AnimatedSprite2D, duration := 0.7) -> void:

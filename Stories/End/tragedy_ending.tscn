@@ -1,0 +1,49 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Stories/End/love_ending.gd" id="1_script"]
+[ext_resource type="FontFile" path="res://Assets/Theme/像素字体.ttf" id="2_font"]
+[ext_resource type="AudioStream" path="res://Assets/Sound Effects/open light.mp3" id="3_light"]
+
+[node name="TragedyEnding" type="Node2D"]
+script = ExtResource("1_script")
+ending_route = 1
+
+[node name="CGHost" type="Node2D" parent="."]
+
+[node name="Overlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="Black" type="ColorRect" parent="Overlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Card" type="Label" parent="Overlay"]
+visible = false
+offset_top = 90.0
+offset_right = 640.0
+offset_bottom = 270.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Credits" type="Label" parent="Overlay"]
+visible = false
+offset_left = 35.0
+offset_top = 24.0
+offset_right = 605.0
+offset_bottom = 336.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LightOffSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("3_light")

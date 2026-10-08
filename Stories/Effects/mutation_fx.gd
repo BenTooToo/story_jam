@@ -3,6 +3,7 @@ class_name MutationFX
 ## Plays the three transformation poses, then keeps the character in a breathing loop.
 
 signal transformation_finished
+signal reversion_finished
 
 const TRANSFORM_TEXTURES: Array[Texture2D] = [
 	preload("res://Assets/caracter/lizard_girl/mutate/变异1.png"),
@@ -11,6 +12,7 @@ const TRANSFORM_TEXTURES: Array[Texture2D] = [
 ]
 const BREATH_TEXTURE := preload("res://Assets/caracter/lizard_girl/trans_stand/呼吸.png")
 const TRANSFORM_ANIMATION := &"transform"
+const REVERT_ANIMATION := &"revert"
 const IDLE_ANIMATION := &"transformed_idle"
 const FOREGROUND_Z_INDEX := 100
 const TRANSFORM_FPS := 1.0
@@ -49,7 +51,8 @@ func _process(_delta: float) -> void:
 		set_process(false)
 		return
 	_character.position = _home
-	if _character.animation != TRANSFORM_ANIMATION:
+	if _character.animation != TRANSFORM_ANIMATION \
+		and _character.animation != REVERT_ANIMATION:
 		return
 	var frame_seconds := 1.0 / TRANSFORM_FPS
 	var shake_start := 1.0 - SHAKE_SECONDS / frame_seconds
@@ -105,6 +108,25 @@ func play(character: AnimatedSprite2D) -> void:
 	await transformation_finished
 
 
+## Replays the transformation poses backward with the same shake cadence.
+func revert() -> void:
+	if not is_instance_valid(_character):
+		return
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	frames.add_animation(REVERT_ANIMATION)
+	frames.set_animation_loop(REVERT_ANIMATION, false)
+	frames.set_animation_speed(REVERT_ANIMATION, TRANSFORM_FPS)
+	for index in range(TRANSFORM_TEXTURES.size() - 1, -1, -1):
+		frames.add_frame(REVERT_ANIMATION, TRANSFORM_TEXTURES[index])
+	_character.stop()
+	_character.sprite_frames = frames
+	_character.play(REVERT_ANIMATION)
+	_apply_frame_offset()
+	set_process(true)
+	await reversion_finished
+
+
 ## Restores the character state from before the transformation.
 func stop() -> void:
 	set_process(false)
@@ -133,6 +155,9 @@ func _on_animation_finished() -> void:
 	if not is_instance_valid(_character):
 		return
 	if _character.animation != TRANSFORM_ANIMATION:
+		if _character.animation == REVERT_ANIMATION:
+			stop()
+			reversion_finished.emit()
 		return
 	_character.position = _home
 	set_process(false)
@@ -146,6 +171,13 @@ func _apply_frame_offset() -> void:
 		return
 	if _character.animation == TRANSFORM_ANIMATION:
 		var index := clampi(_character.frame, 0, TRANSFORM_OFFSETS.size() - 1)
+		_character.offset = _saved_offset + TRANSFORM_OFFSETS[index]
+	elif _character.animation == REVERT_ANIMATION:
+		var index := clampi(
+			TRANSFORM_OFFSETS.size() - 1 - _character.frame,
+			0,
+			TRANSFORM_OFFSETS.size() - 1,
+		)
 		_character.offset = _saved_offset + TRANSFORM_OFFSETS[index]
 	else:
 		_character.offset = _saved_offset + IDLE_OFFSET

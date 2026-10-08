@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://b65hmkapnnhn5"
+path="res://.godot/imported/mixkit-air-in-a-hit-2161.wav-f2acc4d6e3572947804e2aa5caee08db.sample"
+
+[deps]
+
+source_file="res://Assets/Sound Effects/mixkit-air-in-a-hit-2161.wav"
+dest_files=["res://.godot/imported/mixkit-air-in-a-hit-2161.wav-f2acc4d6e3572947804e2aa5caee08db.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

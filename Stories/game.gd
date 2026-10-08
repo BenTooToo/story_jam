@@ -8,16 +8,21 @@ const MONOLOGUE_LIGHT_HOLD := 0.5
 const MONOLOGUE_END_HOLD := 1.5
 const GREETING_DELAY := 1.0
 const CG_FADE_DURATION := 0.8
+const JUMP_BLACKOUT_DURATION := 0.18
 const START_SCENE := preload("res://Stories/Start/start.tscn")
 const MIDDLE_SCENE := preload("res://Stories/Middle/middle.tscn")
 const END_SCENE := preload("res://Stories/End/end.tscn")
 const HEART_FX := preload("res://Stories/Effects/heart_fx.gd")
+const ATTACK_QTE := preload("res://Stories/QTE/attack_qte.gd")
+const ROOFTOP_DUEL := preload("res://Stories/QTE/rooftop_duel.gd")
+const TRAGEDY_ENDING_SCENE := "res://Stories/End/tragedy_ending.tscn"
 
-@export var show_status := false
+@export var auto_start_story := true
 @export_range(1.0, 30.0, 0.5) var camera_follow_speed := 10.0
 
 @onready var _camera: Camera2D = $Camera2D
 @onready var _anchor_host: Node2D = $AnchorHost
+@onready var _blackout_sound: AudioStreamPlayer = $BlackoutSound
 @onready var _monologue_fx: MonologueFX = $MonologueFX
 @onready var _intro_black: ColorRect = $IntroUI/Black
 @onready var _intro_message: Label = $IntroUI/Black/Message
@@ -34,9 +39,10 @@ var _camera_home_zoom := 1.0
 
 
 func _ready() -> void:
-	_status.text = "请选择测试内容"
-	_status.visible = show_status
+	$TestUI.hide()
 	Dialogue.choice_focused.connect(_on_dialogue_choice_focused)
+	if auto_start_story:
+		_run_dialogue_test.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -150,57 +156,6 @@ func _on_dialogue_choice_focused(choice_index: int) -> void:
 		follow_camera(target)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if _dialogue_test_running:
-		return
-	if not event is InputEventKey or not event.pressed or event.echo:
-		return
-
-	match event.keycode:
-		KEY_L:
-			get_viewport().set_input_as_handled()
-			_run_branch_test(&"love")
-		KEY_V:
-			get_viewport().set_input_as_handled()
-			_run_branch_test(&"disgust")
-		KEY_M:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"mutation")
-		KEY_H:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"hearts")
-		KEY_0:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"vomit")
-		KEY_1:
-			get_viewport().set_input_as_handled()
-			_play_anchor(START_SCENE, "正在播放：开场锚点")
-		KEY_2:
-			get_viewport().set_input_as_handled()
-			_play_anchor(MIDDLE_SCENE, "正在播放：中间锚点")
-		KEY_3:
-			get_viewport().set_input_as_handled()
-			_play_anchor(END_SCENE, "正在播放：结尾锚点")
-		KEY_4:
-			get_viewport().set_input_as_handled()
-			_run_dialogue_test()
-		KEY_5:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"sparks")
-		KEY_6:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"shock")
-		KEY_7:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"smoke")
-		KEY_8:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"drop")
-		KEY_9:
-			get_viewport().set_input_as_handled()
-			_run_effect_test(&"descent")
-
-
 func _play_anchor(scene: PackedScene, status_text: String) -> Node:
 	_clear_anchor()
 	_current_anchor = scene.instantiate()
@@ -211,6 +166,7 @@ func _play_anchor(scene: PackedScene, status_text: String) -> Node:
 
 func _clear_anchor() -> void:
 	_monologue_fx.reset_immediately()
+	Dialogue.set_npc0_transformed(false)
 	_camera_home_zoom = 1.0
 	reset_camera(0.0)
 	if not is_instance_valid(_current_anchor):
@@ -313,9 +269,10 @@ func _run_dialogue_test() -> void:
 	var answer := "不可救药的坠入爱河" if selected == 0 else "对眼前的男人感到恶心"
 	if selected == 0:
 		await _run_love_route(opening, npc0, npc1)
+		return
 	else:
 		await _run_disgust_route(opening, npc0, npc1)
-	_status.text = "剧情分支完成，选择：%s（可继续按 1～4）" % answer
+	_status.text = "剧情分支完成，选择：%s" % answer
 	await reset_camera().finished
 	_dialogue_test_running = false
 
@@ -339,6 +296,7 @@ func _run_love_route(opening: Node, woman: AnimatedSprite2D, man: AnimatedSprite
 	await _say(Dialogue.Character.NPC1, "？？")
 
 	await opening.play_mutation(woman)
+	Dialogue.set_npc0_transformed(true)
 	follow_camera(man)
 	await _say(Dialogue.Character.NPC1, "这……")
 	# 欢呼动作素材尚未提供；函数入口已经保留。
@@ -353,17 +311,35 @@ func _run_love_route(opening: Node, woman: AnimatedSprite2D, man: AnimatedSprite
 	await _say(Dialogue.Character.NPC0, "我叫——")
 
 	await opening.play_sparks()
+	opening.start_smoke()
+	await get_tree().create_timer(1.4).timeout
 	await reset_camera().finished
 	await _narrate("或许是因为电梯本身年久失修")
 	await _narrate("又或者是因为，这爱情故事过于的完美")
 	await _narrate("而游戏的创作者是一个单身狗")
 	await _narrate("电梯")
+	_cut_to_black()
+	await get_tree().create_timer(3.0).timeout
 	await _narrate("失控了")
 
-	await opening.play_breakdown()
-	await opening.eject_character(man)
-	await _say(Dialogue.Character.NPC0, "糟糕，我要出去救小林啊")
-	await _play_cg2_transition()
+	opening.stop_smoke()
+	await get_tree().create_timer(0.25).timeout
+	_intro_black.hide()
+	await opening.start_story_breakdown(man)
+	await _say(Dialogue.Character.NPC0, "啊啊啊啊啊啊啊啊啊")
+	await opening.finish_story_breakdown()
+	await opening.play_reversion()
+	Dialogue.set_npc0_transformed(false)
+
+	var cg2: Node = await _play_cg2_transition()
+	await cg2.anchor_finished
+	await cg2.wait_for_opening_sound()
+	await _play_departure(cg2)
+	var cg2_woman: AnimatedSprite2D = cg2.get_node("Elevator/NPCs/NPC0")
+	await _say(Dialogue.Character.NPC0, "我要去救这个男人")
+	await cg2.play_woman_jump(cg2_woman)
+	await _fade_to_black(JUMP_BLACKOUT_DURATION)
+	get_tree().change_scene_to_file("res://Stories/BulletHell/bullet_hell.tscn")
 
 
 func _run_disgust_route(opening: Node, woman: AnimatedSprite2D, man: AnimatedSprite2D) -> void:
@@ -394,42 +370,94 @@ func _run_disgust_route(opening: Node, woman: AnimatedSprite2D, man: AnimatedSpr
 	await _say(Dialogue.Character.NPC1, "怎么样，对我有兴趣么")
 
 	opening.stop_vomit()
-	_choice_camera_targets.clear()
-	_choice_camera_targets.append(man)
-	await Dialogue.entree(
-		Dialogue.Character.NARRATOR,
-		Dialogue.ExpressionState.NORMAL,
-		"QTE",
-		["把男人打出电梯！"],
-	)
-	_choice_camera_targets.clear()
-
+	await _play_attack_qte(woman, man)
 	await opening.eject_character(man)
-	await reset_camera(0.2).finished
-	await opening.play_drop()
 	await _narrate("小木愤怒了")
 	await _narrate("他现在会拼尽全力去报仇")
 	await _narrate("来找回自己本就所剩无几的尊严")
 	follow_camera(woman)
 	await _say(Dialogue.Character.NPC0, "麻烦啊，谁会喜欢这种下头男啊")
-	await _play_cg2_transition()
+	var cg2: Node = await _play_cg2_transition()
+	await cg2.anchor_finished
+	await cg2.wait_for_opening_sound()
+	await _play_departure(cg2)
+	await _narrate("在看不见的地方，小林成功的破坏了电梯的线路")
+	await _narrate("很快，电梯便失控了")
+	await cg2.play_sparks()
+	cg2.start_smoke()
+	await get_tree().create_timer(1.3).timeout
+	cg2.stop_smoke()
+	await cg2.play_rooftop_landing(cg2.get_node("Elevator/NPCs/NPC0"), _camera)
+	var rooftop_man: AnimatedSprite2D = await cg2.play_rooftop_man_fall()
+	await _narrate("决战")
+	await _narrate("开始了")
+	var rooftop_woman: AnimatedSprite2D = cg2.get_node("Elevator/NPCs/NPC0")
+	await _play_rooftop_duel(rooftop_woman, rooftop_man)
+	await _play_attack_qte(rooftop_woman, rooftop_man)
+	await cg2.eject_character(rooftop_man)
+	await cg2.play_rooftop_second_breakdown(rooftop_woman, _camera)
+	_cut_to_black()
+	await _blackout_sound.finished
+	get_tree().change_scene_to_file(TRAGEDY_ENDING_SCENE)
 
 
-func _play_cg2_transition() -> void:
+func _play_rooftop_duel(woman: AnimatedSprite2D, man: AnimatedSprite2D) -> void:
+	_camera_follow_target = null
+	var help: Label = $TestUI/Help
+	var help_was_visible := help.visible
+	help.hide()
+	var duel: RooftopDuel = ROOFTOP_DUEL.new()
+	add_child(duel)
+	await duel.play(woman, man, _camera)
+	duel.queue_free()
+	help.visible = help_was_visible
+
+
+func _play_attack_qte(woman: AnimatedSprite2D, man: AnimatedSprite2D) -> void:
+	_camera_follow_target = null
+	if _camera_tween != null and _camera_tween.is_valid():
+		_camera_tween.kill()
+	var help: Label = $TestUI/Help
+	var help_was_visible := help.visible
+	help.hide()
+	var attack_qte: AttackQTE = ATTACK_QTE.new()
+	add_child(attack_qte)
+	await attack_qte.play(woman, man, _camera)
+	attack_qte.queue_free()
+	help.visible = help_was_visible
+
+
+func _run_attack_qte_test() -> void:
+	_dialogue_test_running = true
+	_clear_anchor()
+	_intro_black.hide()
+	var opening = START_SCENE.instantiate()
+	opening.play_intro_on_ready = false
+	_current_anchor = opening
+	_anchor_host.add_child(opening)
+	var woman: AnimatedSprite2D = opening.get_node("Elevator/NPCs/NPC0")
+	var man: AnimatedSprite2D = opening.get_node("Elevator/NPCs/NPC1")
+	_status.text = "攻击 QTE：连按 E 二十次，再按 Q"
+	await move_camera(woman.global_position + CAMERA_CHARACTER_OFFSET, CAMERA_CHARACTER_ZOOM, 0.4).finished
+	await _play_attack_qte(woman, man)
+	await opening.eject_character(man)
+	await reset_camera(0.4).finished
+	_status.text = "攻击 QTE 完成"
+	_dialogue_test_running = false
+
+
+func _cut_to_black() -> void:
 	_camera_follow_target = null
 	_intro_message.hide()
-	_intro_black.modulate.a = 0.0
+	_intro_black.modulate.a = 1.0
 	_intro_black.show()
-	var fade_to_black := create_tween()
-	fade_to_black.tween_property(
-		_intro_black,
-		"modulate:a",
-		1.0,
-		CG_FADE_DURATION,
-	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await fade_to_black.finished
+	_blackout_sound.play()
 
-	_play_anchor(MIDDLE_SCENE, "正在播放：测试 2 / CG2")
+
+func _play_cg2_transition() -> Node:
+	await _fade_to_black()
+
+	var cg2 := _play_anchor(MIDDLE_SCENE, "正在播放：测试 2 / CG2")
 	await get_tree().process_frame
 	var reveal_cg := create_tween()
 	reveal_cg.tween_property(
@@ -441,6 +469,18 @@ func _play_cg2_transition() -> void:
 	await reveal_cg.finished
 	_intro_black.hide()
 	_intro_message.show()
+	return cg2
+
+
+func _fade_to_black(duration: float = CG_FADE_DURATION) -> void:
+	_camera_follow_target = null
+	_intro_message.hide()
+	_intro_black.modulate.a = 0.0
+	_intro_black.show()
+	var fade := create_tween()
+	fade.tween_property(_intro_black, "modulate:a", 1.0, duration) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await fade.finished
 
 
 func _run_branch_test(branch: StringName) -> void:
@@ -462,6 +502,7 @@ func _run_branch_test(branch: StringName) -> void:
 	var man: AnimatedSprite2D = opening.get_node("Elevator/NPCs/NPC1")
 	if branch == &"love":
 		await _run_love_route(opening, woman, man)
+		return
 	else:
 		await _run_disgust_route(opening, woman, man)
 	_dialogue_test_running = false

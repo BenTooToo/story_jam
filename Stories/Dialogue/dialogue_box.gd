@@ -5,6 +5,8 @@ signal choice_focused(choice_index: int)
 
 const NPC0_NORMAL := preload("res://Assets/caracter/lizard_girl/pp/npc0.png")
 const NPC0_SPEAKING := preload("res://Assets/caracter/lizard_girl/pp/npc0说话.png")
+const NPC0_LIZARD_NORMAL := preload("res://Assets/caracter/lizard_girl/pp/蜥蜴人大头像.png")
+const NPC0_LIZARD_SPEAKING := preload("res://Assets/caracter/lizard_girl/pp/蜥蜴人大头像2.png")
 const NPC1_NORMAL := preload("res://Assets/caracter/cop/pp/npc1.png")
 const NPC1_SPEAKING := preload("res://Assets/caracter/cop/pp/npc1说话.png")
 const NPC0_TALK_SOUND := preload("res://Assets/Sound Effects/女生_5.wav")
@@ -39,6 +41,7 @@ var _portrait_open: Texture2D
 var _talking_visuals_enabled := false
 var _mouth_open := false
 var _advance_action_held := false
+var npc0_transformed := false
 
 
 func _ready() -> void:
@@ -239,8 +242,8 @@ func _update_portrait(character_id: int, expression_id: int) -> void:
 	match character_id:
 		Dialogue.Character.NPC0:
 			_portrait_home = Vector2(22.0, 210.0)
-			_portrait_closed = NPC0_NORMAL
-			_portrait_open = NPC0_SPEAKING
+			_portrait_closed = NPC0_LIZARD_NORMAL if npc0_transformed else NPC0_NORMAL
+			_portrait_open = NPC0_LIZARD_SPEAKING if npc0_transformed else NPC0_SPEAKING
 			_talk_sound.stream = NPC0_TALK_SOUND
 			_set_text_rect(150.0, 222.0, 445.0, 104.0)
 		Dialogue.Character.NPC1:

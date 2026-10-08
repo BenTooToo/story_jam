@@ -13,6 +13,7 @@
 [ext_resource type="AudioStream" uid="uid://trf00tqj0q2m" path="res://Assets/Sound Effects/哐当.mp3" id="9_clank"]
 [ext_resource type="Shader" uid="uid://diw4b5iye7y1" path="res://Assets/Theme/light_shafts.gdshader" id="10_shafts"]
 [ext_resource type="Script" uid="uid://btceiautylsx0" path="res://Stories/Effects/elevator_breakdown_fx.gd" id="11_fx"]
+[ext_resource type="Texture2D" path="res://Assets/caracter/cop/cop_falling/男下落2.png" id="12_returning_man"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5wckm"]
 atlas = ExtResource("2_xvhka")
@@ -171,6 +172,13 @@ sprite_frames = SubResource("SpriteFrames_5vxnu")
 autoplay = "default"
 frame_progress = 0.67914385
 metadata/_edit_lock_ = true
+
+[node name="NPC1Return" type="Sprite2D" parent="Elevator/NPCs"]
+visible = false
+position = Vector2(352, -150)
+scale = Vector2(-0.586, 0.586)
+texture = ExtResource("12_returning_man")
+z_index = 110
 
 [node name="LightShafts" type="ColorRect" parent="Elevator" unique_id=444845184]
 material = SubResource("ShaderMaterial_shafts")
