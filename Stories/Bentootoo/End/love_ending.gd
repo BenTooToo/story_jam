@@ -1,6 +1,7 @@
 extends Node2D
 
 const END_SCENE := preload("res://Stories/Bentootoo/End/end.tscn")
+const ThanksCard := preload("res://Stories/Shared/Web/thanks_card.gd")
 const LIGHTS_OUT_DURATION := 0.18
 ## 演职员表停留多久再回选线界面
 const CREDITS_HOLD := 6.0
@@ -53,6 +54,7 @@ func _run_ending() -> void:
 	await _show_card("高晨与小林的爱情故事", 30, 2.2)
 	await _show_card("本2兔出品", 28, 1.8)
 	await _show_card("爱河线结束", 24, 1.2)
+	SaveData.add_ending("ben_love")
 	_show_credits()
 	await _return_to_route_select()
 
@@ -88,6 +90,7 @@ func _run_tragedy_ending() -> void:
 	await get_tree().create_timer(0.5).timeout
 	await _show_card("本2兔出品", 28, 1.8)
 	await _show_card("高晨和小林的爱情悲剧", 30, 2.2)
+	SaveData.add_ending("ben_tragedy")
 	_show_credits()
 	await _return_to_route_select()
 
@@ -97,6 +100,7 @@ func _return_to_route_select() -> void:
 	var fade := create_tween()
 	fade.tween_property(_credits, "modulate:a", 0.0, 1.0)
 	await fade.finished
+	await ThanksCard.show_on(self, "ben")
 	Session.back_to_route_select()
 
 

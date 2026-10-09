@@ -4,9 +4,20 @@ extends RefCounted
 
 const RATE := 22050
 
+## 同样参数的音效只生成一次。网页版每段新声音都会解码成一份常驻内存的 sample、不释放，
+## 跳舞一首几百下判定，每下现做一个就是几百份。
+static var _cache := {}
+
 
 ## 生成一个从 freq_from 滑到 freq_to 的短促方波感提示音。
 static func blip(freq_from: float, freq_to: float, dur: float, vol := 0.5) -> AudioStreamWAV:
+	var key := "b%s/%s/%s/%s" % [freq_from, freq_to, dur, vol]
+	if not _cache.has(key):
+		_cache[key] = _make_blip(freq_from, freq_to, dur, vol)
+	return _cache[key]
+
+
+static func _make_blip(freq_from: float, freq_to: float, dur: float, vol: float) -> AudioStreamWAV:
 	var frames := maxi(int(RATE * dur), 8)
 	var data := PackedByteArray()
 	data.resize(frames * 2)
@@ -23,6 +34,13 @@ static func blip(freq_from: float, freq_to: float, dur: float, vol := 0.5) -> Au
 
 ## 生成一段衰减的噪声，用来当撞击 / 怪吼。
 static func noise(dur: float, vol := 0.5) -> AudioStreamWAV:
+	var key := "n%s/%s" % [dur, vol]
+	if not _cache.has(key):
+		_cache[key] = _make_noise(dur, vol)
+	return _cache[key]
+
+
+static func _make_noise(dur: float, vol: float) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var frames := maxi(int(RATE * dur), 8)

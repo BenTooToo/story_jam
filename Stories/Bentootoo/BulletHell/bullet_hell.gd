@@ -93,7 +93,7 @@ func _ready() -> void:
 	ending_text.visible_characters = 0
 	ending_layer.add_child(ending_text)
 	restart_prompt = Label.new()
-	restart_prompt.text = "按r键重新开始"
+	restart_prompt.text = "点一下重新开始" if TouchPad.active else "按r键重新开始"
 	restart_prompt.position = Vector2(0, 218)
 	restart_prompt.size = Vector2(640, 32)
 	restart_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -156,6 +156,7 @@ func _process(delta: float) -> void:
 			if phase_time >= 0.7:
 				woman_head.show()
 				man_head.show()
+				TouchPad.use(&"bullet")
 				_change(Phase.PLAY)
 		Phase.PLAY:
 			_tick_play(delta)
@@ -164,6 +165,7 @@ func _process(delta: float) -> void:
 			if phase_time >= 2.0:
 				heart.hide()
 				_burst(heart.position)
+				TouchPad.clear()
 				_change(Phase.LOST)
 				_play_ending(false)
 				encounter_finished.emit(false)
@@ -241,6 +243,7 @@ func _tick_play(delta: float) -> void:
 		else:
 			elapsed = DURATION
 			heart.modulate.a = 1.0
+			TouchPad.clear()
 			_change(Phase.WON)
 			_play_ending(true)
 			encounter_finished.emit(true)
@@ -267,6 +270,8 @@ func _play_ending(won: bool) -> void:
 
 func _start_restart_prompt() -> void:
 	restart_prompt.modulate.a = 1.0
+	# 手机上整屏就是那个 R 键
+	TouchPad.use_tap([KEY_R])
 	ending_blink_tween = create_tween().set_loops()
 	ending_blink_tween.set_trans(Tween.TRANS_SINE)
 	ending_blink_tween.tween_property(restart_prompt, "modulate:a", 0.25, 1.2)
@@ -380,7 +385,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_restart()
 			get_viewport().set_input_as_handled()
 
+func _exit_tree() -> void:
+	TouchPad.clear()
+
 func _restart() -> void:
+	TouchPad.clear()
 	if ending_tween != null and ending_tween.is_valid():
 		ending_tween.kill()
 	if ending_blink_tween != null and ending_blink_tween.is_valid():

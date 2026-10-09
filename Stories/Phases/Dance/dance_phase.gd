@@ -220,6 +220,7 @@ var _count_label: Label
 func _ready() -> void:
 	_rng.randomize()
 	floor_tint = Color(0.62, 0.40, 0.85)   # 跳舞阶段地板是紫的
+	touch_layout = &"dance"
 	draw_obstacle_blocks = false
 	draw_ground_line = false
 	_load_song()
@@ -301,6 +302,7 @@ func _exit_tree() -> void:
 		_music.stop()
 	if _video != null and _video.is_playing():
 		_video.stop()
+	super()
 
 
 func _setup_music() -> void:
@@ -633,17 +635,15 @@ func _make_side(idx: int) -> Dictionary:
 	)
 	var fig: Node2D = side.fig
 	fig.char_scale = DANCER_SCALE
+	# 手机上地板那一条摆着屏幕按键，分数挪到地板上面
 	side.label = make_hud_label(
 		"得分 0   连击 0",
-		10.0 if idx == 0 else 330.0, 316.0, 300.0, 13,
+		10.0 if idx == 0 else 330.0, 280.0 if TouchPad.active else 316.0, 300.0, 13,
 		fig.color,
 		HORIZONTAL_ALIGNMENT_LEFT if idx == 0 else HORIZONTAL_ALIGNMENT_RIGHT,
 	)
 	if idx == 0:
-		make_hud_label(
-			"P1：WASD      " + p2_hint("P2：方向键"),
-			0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
-		)
+		make_keys_hint("P1：WASD      " + p2_hint("P2：方向键"))
 	return side
 
 
@@ -811,6 +811,9 @@ func _finish() -> void:
 		_music.stop()
 	if _video != null:
 		_video.stop()
+	# 这首歌的最高分（排行榜用）：单人只算玩家，双人算两个人里高的那个
+	var best: int = _sides[0].score if Session.single_player else maxi(_sides[0].score, _sides[1].score)
+	SaveData.record_dance(song_name, best)
 	phase_finished.emit({
 		p1 = _sides[0].score,
 		p2 = _sides[1].score,

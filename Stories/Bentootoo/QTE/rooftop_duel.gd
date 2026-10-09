@@ -97,6 +97,7 @@ func begin(target_woman: AnimatedSprite2D, target_man: AnimatedSprite2D, target_
 	showing_rule = true
 	_set_sequence()
 	set_process(true)
+	TouchPad.use(&"duel")
 	var entrance := create_tween()
 	entrance.tween_property(self, "bar_progress", 1.0, BAR_SLIDE_TIME) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -287,7 +288,12 @@ func _finish() -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await exit_tween.finished
 	set_process(false)
+	TouchPad.clear()
 	completed.emit()
+
+
+func _exit_tree() -> void:
+	TouchPad.clear()
 
 
 func _glyph(key: Key) -> String:

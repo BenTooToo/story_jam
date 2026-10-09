@@ -11,26 +11,28 @@ const DANCE_PHASE := preload("res://Stories/Phases/Dance/dance_phase.tscn")
 const BOSS_PHASE := preload("res://Stories/Phases/Boss/boss_phase.tscn")
 const TitleMenu := preload("res://Stories/Shared/Title/title_menu.gd")
 const LevelIntro := preload("res://Stories/Shared/Intro/level_intro.gd")
+const ThanksCard := preload("res://Stories/Shared/Web/thanks_card.gd")
 
 # ---------- 每关规则页的内容 ----------
 # 按键条：{text, keys}，keys 里任意一个键按下就算确认；keys 为空的条目不用按。
+# touch 是手机上的写法：按的是屏幕按键，上面画的是箭头 / 「扔」字（见 TouchPad）。
 const P1_ARENA_KEYS := [
-	{text = "A   往左走", keys = [KEY_A]},
-	{text = "D   往右走", keys = [KEY_D]},
-	{text = "W   跳起来", keys = [KEY_W]},
-	{text = "F   扔东西", keys = [KEY_F]},
+	{text = "A   往左走", keys = [KEY_A], touch = "←   往左走"},
+	{text = "D   往右走", keys = [KEY_D], touch = "→   往右走"},
+	{text = "W   跳起来", keys = [KEY_W], touch = "↑   跳起来"},
+	{text = "F   扔东西", keys = [KEY_F], touch = "扔   扔东西"},
 ]
 const P2_ARENA_KEYS := [
 	{text = "←   往左走", keys = [KEY_LEFT]},
 	{text = "→   往右走", keys = [KEY_RIGHT]},
 	{text = "↑   跳起来", keys = [KEY_UP]},
-	{text = "/   扔东西", keys = [KEY_SLASH, KEY_KP_0]},
+	{text = "/   扔东西", keys = [KEY_SLASH, KEY_KP_0], touch = "扔   扔东西"},
 ]
 const P1_DANCE_KEYS := [
-	{text = "A   ← 左箭头", keys = [KEY_A]},
-	{text = "S   ↓ 下箭头", keys = [KEY_S]},
-	{text = "W   ↑ 上箭头", keys = [KEY_W]},
-	{text = "D   → 右箭头", keys = [KEY_D]},
+	{text = "A   ← 左箭头", keys = [KEY_A], touch = "←   左箭头"},
+	{text = "S   ↓ 下箭头", keys = [KEY_S], touch = "↓   下箭头"},
+	{text = "W   ↑ 上箭头", keys = [KEY_W], touch = "↑   上箭头"},
+	{text = "D   → 右箭头", keys = [KEY_D], touch = "→   右箭头"},
 ]
 const P2_DANCE_KEYS := [
 	{text = "←   左箭头", keys = [KEY_LEFT]},
@@ -361,7 +363,7 @@ func _run_full_story() -> void:
 	# 《第一关》标题 + 操作 / 规则确认
 	_status.text = "完整流程：第一关说明"
 	_clear_anchor()
-	await _show_level_intro(1, "扔物大战", P1_ARENA_KEYS, P2_ARENA_KEYS, THROW_RULES)
+	await _show_level_intro(1, "扔物大战", P1_ARENA_KEYS, P2_ARENA_KEYS, THROW_RULES, &"arena")
 
 	_status.text = "完整流程：阶段一 扔物大战"
 	reset_camera(0.0)
@@ -441,7 +443,7 @@ func _run_full_story() -> void:
 	# 《第二关》
 	_status.text = "完整流程：第二关说明"
 	_clear_anchor()
-	await _show_level_intro(2, "舞蹈对决", P1_DANCE_KEYS, P2_DANCE_KEYS, DANCE_RULES)
+	await _show_level_intro(2, "舞蹈对决", P1_DANCE_KEYS, P2_DANCE_KEYS, DANCE_RULES, &"dance")
 
 	_status.text = "完整流程：阶段二 舞蹈对决"
 	reset_camera(0.0)
@@ -498,7 +500,7 @@ func _run_full_story() -> void:
 	# 《第三关》
 	_status.text = "完整流程：第三关说明"
 	_clear_anchor()
-	await _show_level_intro(3, "电梯怪兽", P1_ARENA_KEYS, P2_ARENA_KEYS, BOSS_RULES)
+	await _show_level_intro(3, "电梯怪兽", P1_ARENA_KEYS, P2_ARENA_KEYS, BOSS_RULES, &"arena")
 
 	_status.text = "完整流程：阶段三 电梯怪兽"
 	reset_camera(0.0)
@@ -535,6 +537,7 @@ func _run_full_story() -> void:
 		Dialogue.ExpressionState.NORMAL,
 		"[center][font_size=20]—— 和解 ——[/font_size][/center]",
 	)
+	SaveData.add_ending("mumu")
 
 	# 和解之后：不管怎么选，最后都得跳舞
 	_status.text = "完整流程：隐藏关前的选择"
@@ -600,15 +603,17 @@ func _run_full_story() -> void:
 	_status.text = "完整流程结束（按 1～9 重新选择）"
 	_dialogue_test_running = false
 	if auto_start:
-		# 打完一轮回到选线界面，可以换另一条线、或者再来一局
+		# 打完一轮回到选线界面，可以换另一条线、或者再来一局（网页版先出一张感谢卡）
+		await ThanksCard.show_on(self, "mumu")
 		await get_tree().create_timer(1.0).timeout
 		Session.back_to_route_select()
 
 
 ## 弹出《第X关》标题 + 操作 / 规则确认页，全部确认完才返回。
-## 单人模式下男生那一栏只写"由电脑控制"。
-func _show_level_intro(level_no: int, subtitle: String, p1_keys: Array, p2_keys: Array, rules: Array) -> void:
+## 单人模式下男生那一栏只写"由电脑控制"。touch_layout：手机上这一关的屏幕按键，规则页上就摆出来让人按一遍。
+func _show_level_intro(level_no: int, subtitle: String, p1_keys: Array, p2_keys: Array, rules: Array, touch_layout := &"") -> void:
 	var intro := LevelIntro.new()
+	intro.touch_layout = touch_layout
 	add_child(intro)
 	if Session.single_player:
 		await intro.run(level_no, subtitle, p1_keys, P2_AI_LINE, rules, "男生  电脑")

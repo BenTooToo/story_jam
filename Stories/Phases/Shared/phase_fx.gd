@@ -40,7 +40,8 @@ static func fade_ramp(from_color: Color, to_color: Color) -> Gradient:
 static func _make(amount: int, lifetime: float, one_shot: bool) -> CPUParticles2D:
 	var p := CPUParticles2D.new()
 	p.texture = square()
-	p.amount = amount
+	# 一次性爆开的：手机「流畅」画质下少放一点
+	p.amount = Toy.particles(amount) if one_shot else amount
 	p.lifetime = lifetime
 	p.one_shot = one_shot
 	p.local_coords = false

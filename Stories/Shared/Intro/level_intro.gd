@@ -9,6 +9,8 @@ extends CanvasLayer
 ##   var intro := LevelIntro.new(); add_child(intro)
 ##   await intro.run(1, "扔物大战", p1_lines, p2_lines, rules)
 ## 每条 line 是 {text = "A  往左走", keys = [KEY_A]}；keys 为空的键位条不用按、直接算过。
+## 手机上：屏幕按键（touch_layout）在按键说明那一段摆出来，按的就是它们（出规则时收起）；line 里有 touch 就用它替掉 text，
+## 「按空格」都换成「点一下」。
 
 signal finished
 
@@ -32,6 +34,9 @@ const LIT := Color(1.0, 1.0, 1.0)
 const OK := Color(0.45, 0.95, 0.5)
 const PENDING_MARK := "→ "
 const DONE_MARK := "√ "
+
+## 手机上这一关的屏幕按键（TouchPad 的布局名），空的就不摆
+var touch_layout := &""
 
 var _root: Control
 var _music: AudioStreamPlayer
@@ -84,6 +89,8 @@ func run(
 	title_text := "",
 ) -> void:
 	_start_music()
+	if touch_layout != &"":
+		TouchPad.use(touch_layout)
 	await _show_title(level_no, subtitle, title_text)
 	if not is_inside_tree():
 		return
@@ -102,6 +109,8 @@ func run(
 func _exit_tree() -> void:
 	if _music != null and _music.playing:
 		_music.stop()
+	if touch_layout != &"":
+		TouchPad.clear()
 
 
 # ---------- 标题 ----------
@@ -166,7 +175,7 @@ func _reveal_next_key(col: Dictionary) -> void:
 	var line: Dictionary = col.lines[i]
 	var needs_key: bool = not line.get("keys", []).is_empty()
 	var lbl := _label(
-		(PENDING_MARK if needs_key else "   ") + str(line.text),
+		(PENDING_MARK if needs_key else "   ") + _line_text(line),
 		float(col.x), KEYS_Y + i * ROW_H, COL_W, LINE_SIZE,
 		LIT if needs_key else DIM,
 	)
@@ -183,7 +192,7 @@ func _reveal_next_key(col: Dictionary) -> void:
 func _confirm_key(col: Dictionary) -> void:
 	var lbl: Label = col.labels[col.index]
 	var line: Dictionary = col.lines[col.index]
-	lbl.text = DONE_MARK + str(line.text)
+	lbl.text = DONE_MARK + _line_text(line)
 	lbl.modulate.a = 1.0
 	lbl.add_theme_color_override("font_color", OK)
 	_bump(lbl)
@@ -191,6 +200,10 @@ func _confirm_key(col: Dictionary) -> void:
 	col.index += 1
 	await get_tree().create_timer(0.28).timeout
 	_reveal_next_key(col)
+
+
+func _line_text(line: Dictionary) -> String:
+	return str(line.get("touch", line.text)) if TouchPad.active else str(line.text)
 
 
 func _check_keys_done() -> void:
@@ -206,6 +219,9 @@ func _check_keys_done() -> void:
 # ---------- 规则 ----------
 
 func _start_rules() -> void:
+	# 键都按过了，屏幕按键先收起来，别挡住底下几条规则（进关会再摆出来）
+	if touch_layout != &"":
+		TouchPad.clear()
 	await get_tree().create_timer(0.4).timeout
 	if _rules.is_empty():
 		_show_final()
@@ -248,7 +264,8 @@ func _confirm_rule() -> void:
 
 func _show_final() -> void:
 	await get_tree().create_timer(0.3).timeout
-	_final_label = _label("都明白了？  按 空格 开始！", 0.0, 322.0, 640.0, 15, TITLE_COLOR)
+	var go := "点一下 开始！" if TouchPad.active else "按 空格 开始！"
+	_final_label = _label("都明白了？  " + go, 0.0, 322.0, 640.0, 15, TITLE_COLOR)
 	_final_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_slide_in(_final_label)
 	Sfx.play(self, Sfx.blip(660.0, 990.0, 0.1, 0.35), -6.0)

@@ -58,6 +58,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_end_slow_motion()
+	TouchPad.clear()
 
 func play(target_woman: AnimatedSprite2D, target_man: AnimatedSprite2D, target_camera: Camera2D) -> void:
 	begin(target_woman, target_man, target_camera)
@@ -90,6 +91,8 @@ func begin(target_woman: AnimatedSprite2D, target_man: AnimatedSprite2D, target_
 	ui.active = true
 	ui.impact_mode = false
 	ui.impact_progress = 0.0
+	# 手机上整屏都能点：连点就是连按 E，亮起来之后点一下就是 Q
+	TouchPad.use(&"qte")
 	set_process(true)
 
 func _remember(character: AnimatedSprite2D) -> Dictionary:
@@ -153,6 +156,8 @@ func press_e() -> void:
 		woman.frame = 1
 
 func press_q() -> void:
+	if state == State.READY:
+		TouchPad.clear()
 	if state != State.READY:
 		return
 	state = State.STRIKE

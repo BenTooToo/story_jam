@@ -71,6 +71,8 @@ var bg_color := Color(0.055, 0.055, 0.075)
 var draw_background := true
 ## 反光地板的底色，三个阶段各一个：扔东西蓝、跳舞紫、电梯怪兽红。子类在 _ready 里改。
 var floor_tint := Color(0.36, 0.46, 0.85)
+## 手机上屏幕按键用哪一套（见 TouchPad._build）。子类在 _ready 里改。
+var touch_layout := &"arena"
 ## 地面上那条浅色接触线。跳舞不要，人直接站在反光地板上
 var draw_ground_line := true
 
@@ -93,12 +95,20 @@ func _enter_tree() -> void:
 	# 子类各自实现 _ready，这里用延后调用挂公共的东西，省得三个阶段各写一遍
 	call_deferred("_setup_floor")
 	call_deferred("_setup_missing_art_hud")
+	call_deferred("_setup_touch")
 
 
 ## 阶段被换掉 / 提前退出时把曲子停掉，别让它继续放到下一段去。
 func _exit_tree() -> void:
 	if _bgm != null and _bgm.playing:
 		_bgm.stop()
+	TouchPad.clear()
+
+
+## 手机上：开场就把屏幕按键摆出来（倒计时的时候先认一认），阶段一结束就收掉
+func _setup_touch() -> void:
+	TouchPad.use(touch_layout)
+	phase_finished.connect(func(_r: Dictionary) -> void: TouchPad.clear(), CONNECT_ONE_SHOT)
 
 
 # ---------- 背景音乐 ----------
@@ -223,6 +233,13 @@ func ai_step_toward(p: PlayerState, target_x: float, tolerance := 6.0) -> float:
 ## 底部那行按键提示：单人模式下 P2 那半截换成"电脑"
 func p2_hint(keys_text: String) -> String:
 	return "P2：电脑" if Session.single_player else keys_text
+
+
+## 底部那行按键提示。手机上不写：屏幕按键就摆在那儿，写键盘字母反而误导
+func make_keys_hint(text: String) -> void:
+	if TouchPad.active:
+		return
+	make_hud_label(text, 0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
 
 
 func _draw_back() -> void:

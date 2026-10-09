@@ -54,10 +54,7 @@ func _build_boss() -> void:
 
 func _build_hud() -> void:
 	make_hud_label("电梯怪兽", 0, 40, 640, 13, Color(0.9, 0.6, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
-	make_hud_label(
-		"合力打倒它！  P1：A/D/W + F      " + p2_hint("P2：←/→/↑ + /"),
-		0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
-	)
+	make_keys_hint("合力打倒它！  P1：A/D/W + F      " + p2_hint("P2：←/→/↑ + /"))
 
 
 func _intro() -> void:

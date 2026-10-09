@@ -38,10 +38,7 @@ func _build_hud() -> void:
 	_score_left = make_hud_label("P1  0", 10, 58, 220, 15, P1_COLOR, HORIZONTAL_ALIGNMENT_LEFT)
 	_score_right = make_hud_label("P2  0", 410, 58, 220, 15, P2_COLOR, HORIZONTAL_ALIGNMENT_RIGHT)
 	_timer_label = make_hud_label(str(ceili(duration)), 270, 56, 100, 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	make_hud_label(
-		"P1：A/D 移动  W 跳  F 扔      " + p2_hint("P2：←/→ 移动  ↑ 跳  / 扔"),
-		0, 342, 640, 10, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER,
-	)
+	make_keys_hint("P1：A/D 移动  W 跳  F 扔      " + p2_hint("P2：←/→ 移动  ↑ 跳  / 扔"))
 
 
 func phase_tick(delta: float) -> void:

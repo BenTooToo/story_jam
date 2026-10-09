@@ -16,11 +16,15 @@ const LOCKED := Color(0.26, 0.26, 0.3)
 const TITLE_COLOR := Color(1.0, 0.93, 0.6)
 const DIM := Color(0.5, 0.5, 0.56)
 const LIT := Color(1.0, 1.0, 1.0)
+## 选项第一行的 y 和行距；鼠标按这个固定的行判断指着哪项，不看标签框（选中会放大，框会变）
+const OPTION_TOP := 200.0
+const OPTION_STEP := 34.0
 
 ## 游戏名，改这里就行
 var game_title := "电梯风云"
 var subtitle := "选 择 模 式"
 var options: Array[String] = ["单人", "双人", "开发者模式"]
+## 留空就只显示按键说明
 var option_hints: Array[String] = [
 	"你操控女生，男生交给电脑",
 	"两个人各管一个，正面对决",
@@ -60,7 +64,7 @@ func _ready() -> void:
 
 	for i in options.size():
 		var locked := i >= locked_from
-		var lbl := _label(options[i], 0.0, 200.0 + i * 34.0, 640.0, 16 if locked else 22, LOCKED if locked else DIM)
+		var lbl := _label(options[i], 0.0, OPTION_TOP + i * OPTION_STEP, 640.0, 16 if locked else 22, LOCKED if locked else DIM)
 		if locked:
 			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
 		lbl.modulate.a = 0.0
@@ -70,7 +74,8 @@ func _ready() -> void:
 	_hint.modulate.a = 0.0
 
 	if can_go_back:
-		var back := _label("Esc 返回选线", 8.0, 6.0, 200.0, 12, LOCKED)
+		# 点它也能回去（手机上没有 Esc）
+		var back := _label("← 返回选线" if TouchPad.active else "Esc 返回选线", 8.0, 6.0, 200.0, 12, LOCKED)
 		back.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 	_animate_in(sub)
@@ -137,7 +142,8 @@ func _refresh() -> void:
 				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		else:
 			lbl.scale = Vector2.ONE
-	_hint.text = option_hints[_selected] + "      W/S 或 ↑/↓ 选择   空格 确认"
+	var keys := "点一下 选择" if TouchPad.active else "W/S 或 ↑/↓ 选择   空格 确认"
+	_hint.text = (option_hints[_selected] + "      " + keys) if _selected < option_hints.size() else keys
 
 
 func _input(event: InputEvent) -> void:
@@ -161,19 +167,28 @@ func _input(event: InputEvent) -> void:
 					_cancel()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion:
-		for i in locked_from:
-			if _option_labels[i].get_global_rect().has_point(event.position) and i != _selected:
-				_selected = i
-				Sfx.play(self, Sfx.blip(520.0, 560.0, 0.04, 0.25), -10.0)
-				_refresh()
+		var i := _option_at(event.position)
+		if i >= 0 and i != _selected:
+			_selected = i
+			Sfx.play(self, Sfx.blip(520.0, 560.0, 0.04, 0.25), -10.0)
+			_refresh()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		for i in locked_from:
-			if _option_labels[i].get_global_rect().has_point(event.position):
-				_selected = i
-				_refresh()
-				_confirm()
-				get_viewport().set_input_as_handled()
-				return
+		if can_go_back and Rect2(0, 0, 140, 34).has_point(event.position):
+			_cancel()
+			get_viewport().set_input_as_handled()
+			return
+		var i := _option_at(event.position)
+		if i >= 0:
+			_selected = i
+			_refresh()
+			_confirm()
+			get_viewport().set_input_as_handled()
+
+
+## 鼠标指着第几项（灰的不算），没指着返回 -1。每项占一整行、行与行不重叠，所以在两项交界处不会来回跳。
+func _option_at(pos: Vector2) -> int:
+	var i := floori((pos.y - OPTION_TOP) / OPTION_STEP)
+	return i if i >= 0 and i < locked_from else -1
 
 
 func _move(step: int) -> void:
