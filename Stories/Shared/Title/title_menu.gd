@@ -3,27 +3,32 @@ extends CanvasLayer
 ## 底下还有一条灰掉的「开发者模式」，光标跳不上去、鼠标也点不了，
 ## 但在这个菜单里按 F8 就能进（回到按 1～9 单独测试各段的模式）。
 ## 用法：var menu := TitleMenu.new(); add_child(menu); var mode: int = await menu.mode_chosen
+## 按 Esc 会发 Mode.BACK（回选线界面）。选线界面也是这个菜单，add_child 之前改掉下面几个 var 就行。
 
 signal mode_chosen(mode: int)
 
-enum Mode { SINGLE, DUO, DEV }
+enum Mode { SINGLE, DUO, DEV, BACK = -1 }
 
 const PIXEL_FONT := preload("res://Assets/Theme/像素字体.ttf")
 const Sfx := preload("res://Stories/Phases/Shared/retro_sfx.gd")
 
-## 游戏名，改这里就行
-const GAME_TITLE := "电梯风云"
-const OPTIONS := ["单人", "双人", "开发者模式"]
-const OPTION_HINTS := [
-	"你操控女生，男生交给电脑",
-	"两个人各管一个，正面对决",
-]
-## 从这一项开始（含）都是灰的，选不了
-const LOCKED_FROM := Mode.DEV
 const LOCKED := Color(0.26, 0.26, 0.3)
 const TITLE_COLOR := Color(1.0, 0.93, 0.6)
 const DIM := Color(0.5, 0.5, 0.56)
 const LIT := Color(1.0, 1.0, 1.0)
+
+## 游戏名，改这里就行
+var game_title := "电梯风云"
+var subtitle := "选 择 模 式"
+var options: Array[String] = ["单人", "双人", "开发者模式"]
+var option_hints: Array[String] = [
+	"你操控女生，男生交给电脑",
+	"两个人各管一个，正面对决",
+]
+## 从这一项开始（含）都是灰的，选不了；F8 暗门直达最后一项。等于 options.size() 就是没有灰的、也没有暗门。
+var locked_from: int = Mode.DEV
+## 能不能按 Esc 回选线界面（选线界面自己就是入口，关掉）
+var can_go_back := true
 
 var _root: Control
 var _title: Label
@@ -47,15 +52,15 @@ func _ready() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(bg)
 
-	_title = _label(GAME_TITLE, 0.0, 78.0, 640.0, 48, TITLE_COLOR)
+	_title = _label(game_title, 0.0, 78.0, 640.0, 48, TITLE_COLOR)
 	_title.add_theme_constant_override("outline_size", 6)
 
-	var sub := _label("选 择 模 式", 0.0, 168.0, 640.0, 14, DIM)
+	var sub := _label(subtitle, 0.0, 168.0, 640.0, 14, DIM)
 	sub.modulate.a = 0.0
 
-	for i in OPTIONS.size():
-		var locked := i >= LOCKED_FROM
-		var lbl := _label(OPTIONS[i], 0.0, 200.0 + i * 34.0, 640.0, 16 if locked else 22, LOCKED if locked else DIM)
+	for i in options.size():
+		var locked := i >= locked_from
+		var lbl := _label(options[i], 0.0, 200.0 + i * 34.0, 640.0, 16 if locked else 22, LOCKED if locked else DIM)
 		if locked:
 			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
 		lbl.modulate.a = 0.0
@@ -63,6 +68,10 @@ func _ready() -> void:
 
 	_hint = _label("", 0.0, 318.0, 640.0, 12, DIM)
 	_hint.modulate.a = 0.0
+
+	if can_go_back:
+		var back := _label("Esc 返回选线", 8.0, 6.0, 200.0, 12, LOCKED)
+		back.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 	_animate_in(sub)
 
@@ -115,10 +124,10 @@ func _fade_in(lbl: Label, duration: float) -> void:
 
 
 func _refresh() -> void:
-	for i in LOCKED_FROM:
+	for i in locked_from:
 		var lbl := _option_labels[i]
 		var on := i == _selected
-		lbl.text = ("→ %s ←" % OPTIONS[i]) if on else OPTIONS[i]
+		lbl.text = ("→ %s ←" % options[i]) if on else options[i]
 		lbl.add_theme_color_override("font_color", LIT if on else DIM)
 		if on:
 			lbl.pivot_offset = lbl.size * 0.5
@@ -128,7 +137,7 @@ func _refresh() -> void:
 				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		else:
 			lbl.scale = Vector2.ONE
-	_hint.text = OPTION_HINTS[_selected] + "      W/S 或 ↑/↓ 选择   空格 确认"
+	_hint.text = option_hints[_selected] + "      W/S 或 ↑/↓ 选择   空格 确认"
 
 
 func _input(event: InputEvent) -> void:
@@ -144,17 +153,21 @@ func _input(event: InputEvent) -> void:
 				_confirm()
 			KEY_F8:
 				# 暗门：开发者模式
-				_selected = Mode.DEV
-				_confirm()
+				if locked_from < options.size():
+					_selected = options.size() - 1
+					_confirm()
+			KEY_ESCAPE:
+				if can_go_back:
+					_cancel()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion:
-		for i in LOCKED_FROM:
+		for i in locked_from:
 			if _option_labels[i].get_global_rect().has_point(event.position) and i != _selected:
 				_selected = i
 				Sfx.play(self, Sfx.blip(520.0, 560.0, 0.04, 0.25), -10.0)
 				_refresh()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		for i in LOCKED_FROM:
+		for i in locked_from:
 			if _option_labels[i].get_global_rect().has_point(event.position):
 				_selected = i
 				_refresh()
@@ -164,7 +177,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _move(step: int) -> void:
-	_selected = posmod(_selected + step, LOCKED_FROM)
+	_selected = posmod(_selected + step, locked_from)
 	Sfx.play(self, Sfx.blip(520.0, 560.0, 0.04, 0.25), -10.0)
 	_refresh()
 
@@ -173,8 +186,8 @@ func _confirm() -> void:
 	_done = true
 	Sfx.play(self, Sfx.blip(880.0, 1320.0, 0.12, 0.4), -6.0)
 	var chosen := _option_labels[_selected]
-	if _selected == Mode.DEV:
-		chosen.text = "→ 开发者模式 ←"
+	if _selected >= locked_from:
+		chosen.text = "→ %s ←" % options[_selected]
 		chosen.add_theme_color_override("font_color", TITLE_COLOR)
 	var tw := create_tween()
 	tw.set_parallel(true)
@@ -187,4 +200,14 @@ func _confirm() -> void:
 	tw.chain().tween_property(_root, "modulate:a", 0.0, 0.45)
 	await tw.finished
 	mode_chosen.emit(_selected)
+	queue_free()
+
+
+func _cancel() -> void:
+	_done = true
+	Sfx.play(self, Sfx.blip(660.0, 330.0, 0.12, 0.4), -6.0)
+	var tw := create_tween()
+	tw.tween_property(_root, "modulate:a", 0.0, 0.35)
+	await tw.finished
+	mode_chosen.emit(Mode.BACK)
 	queue_free()

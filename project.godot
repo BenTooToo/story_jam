@@ -11,14 +11,15 @@ config_version=5
 [application]
 
 config/name="Story_jam"
-run/main_scene="uid://bcll3kva0ja7v"
-config/features=PackedStringArray("4.6", "GL Compatibility")
-config/icon="res://icon.svg"
+run/main_scene="uid://d27odqhipxghm"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.png"
 
 [autoload]
 
 Dialogue="*res://Stories/Shared/Dialogue/dialogue_manager.gd"
 Session="*res://Stories/Shared/session.gd"
+BenDialogue="*res://Stories/Bentootoo/Dialogue/dialogue_manager.gd"
 
 [display]
 

@@ -321,6 +321,9 @@ func _run_full_story() -> void:
 	var menu := TitleMenu.new()
 	add_child(menu)
 	var mode: int = await menu.mode_chosen
+	if mode == TitleMenu.Mode.BACK:
+		Session.back_to_route_select()
+		return
 	if mode == TitleMenu.Mode.DEV:
 		# 菜单里按了 F8：回到按 1～9 单独测试各段的开发者模式。
 		# 开发者模式按单人跑：P2 交给电脑，一个人就能把每一关测完
@@ -597,9 +600,9 @@ func _run_full_story() -> void:
 	_status.text = "完整流程结束（按 1～9 重新选择）"
 	_dialogue_test_running = false
 	if auto_start:
-		# 打完一轮回到标题菜单，可以直接再来一局
+		# 打完一轮回到选线界面，可以换另一条线、或者再来一局
 		await get_tree().create_timer(1.0).timeout
-		_run_full_story()
+		Session.back_to_route_select()
 
 
 ## 弹出《第X关》标题 + 操作 / 规则确认页，全部确认完才返回。

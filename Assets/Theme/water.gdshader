@@ -29,6 +29,9 @@ uniform float blur_depth : hint_range(0.0, 4.0) = 2.0;
 uniform float fade : hint_range(0.0, 1.0) = 1.0;
 
 void fragment() {
+	// COLOR already contains the ColorRect colour and CanvasItem modulate.
+	// Preserve its alpha so scene transitions can fade this shader smoothly.
+	float canvas_alpha = COLOR.a;
 	// depth: 0 at the contact line (top), 1 at the far edge (bottom).
 	float depth = UV.y;
 
@@ -51,5 +54,5 @@ void fragment() {
 	float refl_vis = reflection_strength * exp(-reflection_falloff * depth);
 	col = mix(col, reflection, refl_vis);
 
-	COLOR = vec4(col, fade);
+	COLOR = vec4(col, fade * canvas_alpha);
 }
