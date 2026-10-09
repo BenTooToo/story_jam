@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://d27odqhipxghm"]
+
+[ext_resource type="Script" uid="uid://bwd0e0yew5ehl" path="res://Stories/Shared/RouteSelect/route_select.gd" id="1_route"]
+
+[node name="RouteSelect" type="Node"]
+script = ExtResource("1_route")

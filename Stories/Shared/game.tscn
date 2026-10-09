@@ -25,7 +25,7 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 15
-text = "[1] 开场锚点   [2] 中间锚点   [3] 结尾锚点   [4] 开场 + 对话测试"
+text = "[1]开场 [2]中间 [3]结尾 [4]对话测试 [5]扔物 [6]跳舞 [7]怪兽 [8]完整三阶段"
 
 [node name="Status" type="Label" parent="TestUI"]
 offset_left = 8.0

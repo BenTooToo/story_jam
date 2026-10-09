@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<title>Story Jam</title>
+		<!--
+		Story Jam 的 B 站（Toy）网页壳，照《不散》的那份改的。和 Godot 自带的壳相比：
+		- 引擎（index.wasm）先下载预压缩的 index.wasm.gz.bin（bilibili/export_web.sh 生成），
+		  边下边在浏览器里解压：Toy 的 CDN 对 .wasm 不压缩。浏览器没有 DecompressionStream、
+		  或者找不到 .gz.bin，就退回原文件。资源包 index.pck 原样下载（里面的声音视频本来就压过）。
+		- 加载画面是游戏的标题画面（splash.png，导出脚本复制进来），底下一根细进度条。
+		- 在 B 站 App 里永远不全屏、不沉浸：App 底下那条有 Toy 的点赞、评论按钮，不能藏。
+		  手机竖着拿时提示一次「建议横屏」，点一下就收起，竖着也能玩。
+		- 左上角是版本号和导出时间：导出脚本按 bilibili/VERSION 和当前时间填进 __GAME_VERSION__。
+		- Toy SDK 的桥 window.gameToy（Godot 拿不到 Promise，见 Stories/Shared/Web/toy.gd），
+		  和「流畅」画质用的 window.gameSmooth（接管 devicePixelRatio）。
+		-->
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: #e6e0d9;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+/* Pixel art drawn at a whole multiple of its size (--s, set by fit()). */
+.pixel {
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+	display: block;
+}
+
+#status, #rotate {
+	position: fixed;
+	inset: 0;
+	background-color: black;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#status-splash {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+#status-bar {
+	position: absolute;
+	bottom: 8%;
+	left: 50%;
+	transform: translateX(-50%);
+	width: calc(96px * var(--s, 2));
+	height: calc(1px * var(--s, 2));
+	background-color: #2a2826;
+}
+
+#status-fill {
+	width: 0;
+	height: 100%;
+	background-color: #e6e0d9;
+}
+
+#status-version {
+	position: absolute;
+	top: 8px;
+	left: 10px;
+	color: #e6e0d9;
+	text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+	opacity: 0.8;
+	font-family: sans-serif;
+	font-size: 12px;
+}
+
+#status-notice {
+	display: none;
+	margin: 0 2rem;
+	color: #e6e0d9;
+	font-family: sans-serif;
+	line-height: 1.5;
+	text-align: center;
+}
+
+#rotate {
+	display: none;
+	z-index: 10;
+	background-color: rgba(0, 0, 0, 0.82);
+	cursor: pointer;
+}
+
+#rotate-tap {
+	margin-top: 1.2em;
+	color: #a8a29c;
+	font-family: sans-serif;
+	font-size: 14px;
+}
+
+#rotate img {
+	width: calc(98px * var(--s, 2));
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="pixel" src="splash.png" alt="Story Jam">
+			<div id="status-bar"><div id="status-fill"></div></div>
+			<div id="status-version">__GAME_VERSION__</div>
+			<div id="status-notice"></div>
+		</div>
+
+		<div id="rotate">
+			<img class="pixel" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGIAAAALCAYAAACEXlicAAABUklEQVR4nMVXSQ7CMAykiFf0xI3/P4cbp3wDFNRIVjT2jJ0i5tImtR3vTrfLgfZ6vvtzvz+2sRftZ2kUtEOOBZJZPW/ms+v+nj0rowejdZ2OnDIQBcvj83gYHQI7z5Nxhn3Kvv3GMHhvjCBzmF3bLFOc1UTFI309GUhPSx9VBJNl9yw/ko/eBz1tN8jgSBFkHDIymzEdLItZ+VcrwkO2bUf++FbErFQnUipiBZVZtDu9feX8TMUrwUZ8dm9+DlmnzoiIlwWyiQH3nMOcFDmV6VkZ8ln73BkxK8YG1mrGDGSCWK2IqIWq/J6uCJbOCxwNhOK0rEOqV8FWPC/iQ63iTKgz4soE2XnhfWNG9O+/MlRBpOewrfpPspoAYUXYyP3TgWpL8Cos07vZ1XfOZLX1IrrZt30NA4F6fXQTYMowtGKw2d+wgtk+KxO1S+USoyTATPMBr/4YB5XkU8MAAAAASUVORK5CYII=" alt="请把手机横过来">
+			<div id="rotate-tap">建议横屏游玩 · 点一下继续</div>
+		</div>
+
+		<script>
+// Bilibili app: the page follows the phone (auto-rotate) and is never immersive, so the app's
+// own bar stays on screen with the Toy's like and comment buttons. Landscape is only
+// suggested (#rotate, once). Toy's SDK posts it to the app; anywhere else it rejects
+// ("unsupported"), which is fine.
+(function () {
+	const sdk = document.createElement('script');
+	sdk.src = 'https://s1.hdslb.com/bfs/seed/toy/app/sdk/toy-sdk.js';
+	sdk.async = true;
+	sdk.onload = function () {
+		try {
+			if (window.toy && typeof window.toy.setContainerMode === 'function') {
+				window.toy.setContainerMode({ orientation: 'auto', immersive: false }).catch(function () {});
+			}
+		} catch (e) { /* not in the app */ }
+	};
+	document.head.appendChild(sdk);
+}());
+
+// Toy's SDK answers with Promises; the game can't wait on those, so each call is run here
+// under a name and its outcome kept until the game asks for it, every frame till it's back:
+// gameToy.run('rank', function (toy) { return toy.getRankList(...); }), then
+// gameToy.get('rank'): JSON of { status: 'loading' | 'ok' | 'error', data | error }.
+window.gameToy = (function () {
+	const results = {};
+	// The SDK loads on its own (async, below): a call made before it's there waits for it.
+	function sdk() {
+		return new Promise(function (resolve, reject) {
+			let waited = 0;
+			(function check() {
+				if (window.toy) {
+					resolve(window.toy);
+				} else if (waited >= 10000) {
+					reject(new Error('no_sdk'));
+				} else {
+					waited += 100;
+					setTimeout(check, 100);
+				}
+			}());
+		});
+	}
+	function run(key, make) {
+		results[key] = { status: 'loading' };
+		const promise = sdk().then(make);
+		promise.then(function (data) {
+			results[key] = { status: 'ok', data: data === undefined ? null : data };
+		}, function (e) {
+			results[key] = { status: 'error', error: String((e && (e.message || e.type)) || e) };
+		});
+	}
+	function get(key) {
+		return JSON.stringify(results[key] || { status: 'error', error: 'not_asked' });
+	}
+	return { run: run, get: get };
+}());
+
+// Smooth mode (选线界面右上角的「画质：流畅」): Godot sizes its canvas from window.devicePixelRatio, so a
+// phone renders every effect at its full resolution, about 2400x1080. While the game sets
+// window.gameSmooth, the ratio given out is just enough for the game to fill the window at
+// twice its own size (1280x720 on a 16:9 screen), whole pixels, never more than the real one.
+// Godot reads it every frame, so switching takes effect at once. window.gamePhone is the
+// default the game starts with.
+window.gameVersion = document.getElementById('status-version').textContent;
+
+(function () {
+	const real = window.devicePixelRatio || 1;
+	window.gameSmooth = false;
+	window.gamePhone = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+		|| (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+	try {
+		Object.defineProperty(window, 'devicePixelRatio', {
+			configurable: true,
+			get: function () {
+				if (!window.gameSmooth) {
+					return real;
+				}
+				const fit = Math.min(window.innerWidth / 640, window.innerHeight / 360);
+				return fit > 0 ? Math.min(real, 2 / fit) : real;
+			},
+		});
+	} catch (e) { /* stays at full resolution */ }
+}());
+
+// The loading screen's pixel scale (a whole number of device pixels per game pixel, the
+// same way the game fits 640x360), and the turn-your-phone note on an upright phone: only a
+// suggestion, shown until the first tap, then never again.
+(function () {
+	const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+	const note = document.getElementById('rotate');
+	let dismissed = false;
+	note.addEventListener('click', function () {
+		dismissed = true;
+		note.style.display = 'none';
+	});
+	function fit() {
+		const dpr = window.devicePixelRatio || 1;
+		const w = window.innerWidth;
+		const h = window.innerHeight;
+		const s = Math.max(1, Math.floor(Math.min(w / 640, h / 360) * dpr * 2)) / dpr;
+		document.documentElement.style.setProperty('--s', String(s));
+		const upright = h > w && coarse !== null && coarse.matches;
+		note.style.display = upright && !dismissed ? 'flex' : 'none';
+	}
+	window.addEventListener('resize', fit);
+	window.addEventListener('orientationchange', fit);
+	fit();
+}());
+
+// The engine and the pack come gzipped and are unzipped here as they stream in. Godot's
+// loader fetches them by these names and counts the bytes we hand back against the sizes it
+// was told (the unzipped ones), so its progress stays right.
+(function () {
+	// 只压引擎：资源包里几乎全是 mp3 / ogv，本来就压过，gzip 只省 4%，反而让上传包大一倍
+	const PACKED = { 'index.wasm': 'index.wasm.gz.bin' };
+	const TYPES = { 'index.wasm': 'application/wasm' };
+	if (typeof DecompressionStream !== 'function' || typeof ReadableStream !== 'function') {
+		return;   // old browser: plain files
+	}
+	const realFetch = window.fetch.bind(window);
+	window.fetch = function (input, init) {
+		const url = typeof input === 'string' ? input : (input && input.url) || '';
+		const name = url.split('?')[0].split('/').pop();
+		if (!Object.prototype.hasOwnProperty.call(PACKED, name)) {
+			return realFetch(input, init);
+		}
+		const packedUrl = url.replace(name, PACKED[name]);
+		return realFetch(packedUrl, init).then(function (res) {
+			if (!res.ok || !res.body) {
+				return realFetch(input, init);
+			}
+			// A server that unzips it on the way (Content-Encoding) hands over plain bytes:
+			// look at the first two before deciding.
+			const reader = res.body.getReader();
+			return reader.read().then(function (first) {
+				const head = first.value || new Uint8Array(0);
+				const gz = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+				let stream = new ReadableStream({
+					start: function (controller) {
+						if (head.length) {
+							controller.enqueue(head);
+						}
+						if (first.done) {
+							controller.close();
+						}
+					},
+					pull: function (controller) {
+						return reader.read().then(function (r) {
+							if (r.done) {
+								controller.close();
+							} else {
+								controller.enqueue(r.value);
+							}
+						});
+					},
+				});
+				if (gz) {
+					stream = stream.pipeThrough(new DecompressionStream('gzip'));
+				}
+				return new Response(stream, { headers: { 'content-type': TYPES[name] } });
+			});
+		}).catch(function () {
+			return realFetch(input, init);
+		});
+	};
+}());
+		</script>
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const status = document.getElementById('status');
+	const fill = document.getElementById('status-fill');
+	const notice = document.getElementById('status-notice');
+
+	function fail(err) {
+		console.error(err);
+		const text = err instanceof Error ? err.message : (typeof err === 'string' ? err : '出了点问题。');
+		notice.textContent = '加载失败，请刷新重试。\n' + text;
+		notice.style.whiteSpace = 'pre-line';
+		notice.style.display = 'block';
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+	if (missing.length !== 0) {
+		fail('这个浏览器缺少运行游戏所需的功能：\n' + missing.join('\n'));
+		return;
+	}
+	engine.startGame({
+		'onProgress': function (current, total) {
+			if (current > 0 && total > 0) {
+				fill.style.width = (Math.min(1, current / total) * 100).toFixed(1) + '%';
+			}
+		},
+	}).then(function () {
+		status.remove();
+	}, fail);
+}());
+		</script>
+	</body>
+</html>

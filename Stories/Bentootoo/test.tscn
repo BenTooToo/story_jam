@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://bewxn7c6388rv"]
+
+[ext_resource type="Texture2D" uid="uid://c2i755t0gc0pp" path="res://Assets/害羞.png" id="1_00tp4"]
+[ext_resource type="Texture2D" uid="uid://bip3ms7js36gh" path="res://Assets/ROMART/npc0.png" id="2_77dp3"]
+[ext_resource type="Texture2D" uid="uid://bfpaotfahrl62" path="res://Assets/caracter/lizard_girl/pp/蜥蜴人大头像2.png" id="3_5tkv4"]
+[ext_resource type="Texture2D" uid="uid://dpdxigbe5neem" path="res://Assets/ROMART/npc1.png" id="4_0m0f1"]
+[ext_resource type="Texture2D" uid="uid://3irj5cgltib1" path="res://Assets/Prof. Gao/npc standing.png" id="5_b0q6j"]
+[ext_resource type="Texture2D" uid="uid://drmcv737h3uhw" path="res://Assets/caracter/lizard_girl/puke/呕吐1.png" id="6_77dp3"]
+[ext_resource type="Texture2D" uid="uid://dlwd14ck44npp" path="res://Assets/caracter/lizard_girl/puke/呕吐2 .png" id="7_5tkv4"]
+[ext_resource type="Texture2D" uid="uid://euwqu3w4itmr" path="res://Assets/caracter/lizard_girl/puke/呕吐中.png" id="8_0m0f1"]
+[ext_resource type="Texture2D" uid="uid://dnfysfibn7bs0" path="res://Assets/caracter/lizard_girl/puke/呕吐3.png" id="9_b0q6j"]
+[ext_resource type="Texture2D" uid="uid://d0j8gid8ig2w3" path="res://Assets/caracter/lizard_girl/puke/呕吐物1.png" id="10_mhym6"]
+[ext_resource type="Texture2D" uid="uid://bhsdkkdowfy8w" path="res://Assets/efx/love_efx/冒爱心3.png" id="11_a3se8"]
+
+[node name="test" type="Node2D" unique_id=384463643]
+
+[node name="害羞" type="Sprite2D" parent="." unique_id=1350950378]
+position = Vector2(300, 224)
+texture = ExtResource("1_00tp4")
+
+[node name="Npc0" type="Sprite2D" parent="." unique_id=127129479]
+z_index = -1
+position = Vector2(300, 222)
+texture = ExtResource("2_77dp3")
+
+[node name="蜥蜴人大头像2" type="Sprite2D" parent="." unique_id=1837622109]
+position = Vector2(432, 215)
+texture = ExtResource("3_5tkv4")
+
+[node name="害羞2" type="Sprite2D" parent="." unique_id=799390950]
+position = Vector2(429, 214)
+texture = ExtResource("1_00tp4")
+
+[node name="Npc1" type="Sprite2D" parent="." unique_id=1723189264]
+position = Vector2(167, 218)
+texture = ExtResource("4_0m0f1")
+
+[node name="害羞3" type="Sprite2D" parent="." unique_id=1591889599]
+position = Vector2(168, 214)
+texture = ExtResource("1_00tp4")
+
+[node name="NpcStanding" type="Sprite2D" parent="." unique_id=1549673639]
+position = Vector2(-515, 260)
+texture = ExtResource("5_b0q6j")
+
+[node name="呕吐1" type="Sprite2D" parent="." unique_id=1785522521]
+position = Vector2(-519, 682)
+texture = ExtResource("6_77dp3")
+
+[node name="呕吐22" type="Sprite2D" parent="." unique_id=192882285]
+position = Vector2(-373, 682)
+texture = ExtResource("7_5tkv4")
+
+[node name="呕吐23" type="Sprite2D" parent="." unique_id=1903941475]
+position = Vector2(-237, 677)
+texture = ExtResource("8_0m0f1")
+
+[node name="呕吐2" type="Sprite2D" parent="." unique_id=1243298654]
+position = Vector2(-77, 685)
+texture = ExtResource("9_b0q6j")
+
+[node name="呕吐物2" type="Sprite2D" parent="." unique_id=1965013211]
+position = Vector2(-76, 687)
+texture = ExtResource("10_mhym6")
+
+[node name="冒爱心3" type="Sprite2D" parent="." unique_id=96628147]
+position = Vector2(-657, 274)
+texture = ExtResource("11_a3se8")

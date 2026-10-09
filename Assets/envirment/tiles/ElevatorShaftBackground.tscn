@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://8updpjqm87py"]
+
+[ext_resource type="Texture2D" uid="uid://txscjv44af8j" path="res://Assets/envirment/tiles/瓷砖.png" id="1_wtcfe"]
+[ext_resource type="Texture2D" uid="uid://c1fri0jm55uic" path="res://Assets/envirment/tiles/电梯井.png" id="2_0e48y"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0e48y"]
+texture = ExtResource("1_wtcfe")
+margins = Vector2i(1, 1)
+separation = Vector2i(1, 1)
+2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
+2:1/0 = 0
+3:1/0 = 0
+4:1/0 = 0
+5:1/0 = 0
+6:1/0 = 0
+7:1/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_h7wyl"]
+sources/0 = SubResource("TileSetAtlasSource_0e48y")
+
+[node name="ElevatorShaftBackground" type="Node2D" unique_id=1502036410]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1351510841]
+tile_set = SubResource("TileSet_h7wyl")
+
+[node name="电梯井" type="Sprite2D" parent="." unique_id=157437485]
+position = Vector2(296, 160)
+texture = ExtResource("2_0e48y")
+
+[node name="电梯井2" type="Sprite2D" parent="." unique_id=305131844]
+position = Vector2(295, -57)
+texture = ExtResource("2_0e48y")
+
+[node name="电梯井3" type="Sprite2D" parent="." unique_id=2066434361]
+position = Vector2(296, 377)
+texture = ExtResource("2_0e48y")
