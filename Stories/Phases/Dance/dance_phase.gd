@@ -811,9 +811,6 @@ func _finish() -> void:
 		_music.stop()
 	if _video != null:
 		_video.stop()
-	# 这首歌的最高分（排行榜用）：单人只算玩家，双人算两个人里高的那个
-	var best: int = _sides[0].score if Session.single_player else maxi(_sides[0].score, _sides[1].score)
-	SaveData.record_dance(song_name, best)
 	phase_finished.emit({
 		p1 = _sides[0].score,
 		p2 = _sides[1].score,

@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## 两张关注卡片（只在网页版出现），点名字去那位作者的 B 站主页，点别的地方（或按空格）继续。
-## - 片尾：「感谢游玩」+ 已达成几个结局 + 这条线的作者 + 三位作者。情绪最高的时候，关注入口最有用。
+## - 片尾：「感谢游玩」+ 已达成几个结局 + 这条线的作者 + 全部作者。情绪最高的时候，关注入口最有用。
 ## - 开局前：第一次进游戏弹一次「喜欢的话，可以关注一下我们」，直接点别处就跳过，之后不再弹。
 ## 都不锁内容：Toy 规定不能拿关注 / 点赞 / 三连锁基础功能，违反会下架。
 ## 用法：await ThanksCard.show_on(self, "ben")    await ThanksCard.show_follow_prompt(self)
@@ -69,7 +69,7 @@ func _ready() -> void:
 func _build_opening() -> void:
 	var title := _label("喜欢的话，可以关注一下我们", 104.0, 22, TITLE_COLOR)
 	title.add_theme_constant_override("outline_size", 5)
-	_label("这个游戏是三个人一起做的", 148.0, 13, DIM)
+	_label("这个游戏是四个人一起做的", 148.0, 13, DIM)
 	_add_links(196.0, 18, "-", [])
 	_label("点名字去主页  ·  关不关注都能玩", 236.0, 12, DIM)
 	_label("点其他地方开始" if TouchPad.active else "点其他地方 / 空格 开始", 318.0, 13, DIM)

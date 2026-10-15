@@ -3,7 +3,7 @@
 #
 #   bash bilibili/export_web.sh
 #
-# 生成 ../story_jam_web/（和本工程同级）和 ../story_jam_web.zip（上传 Toy 用这个 zip）。
+# 生成 ~/Desktop/程序programs/小游戏/story_jam/导出/B站版/ 下的 story_jam_web/ 和 story_jam_web.zip（上传 Toy 用这个 zip）。
 # 用 "Web" 导出预设：无线程、壳是 bilibili/shell.html。然后把引擎 gzip 成 index.wasm.gz.bin，
 # shell.html 会优先下载它、在浏览器里边下边解压（Toy 的 CDN 对 .wasm 不压缩，39MB → 10MB）；
 # 原文件也留着，给不支持解压的老浏览器兜底。资源包不压：里面几乎全是 mp3 / ogv，gzip 只省 4%。
@@ -11,7 +11,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT="/Applications/Godot.app/Contents/MacOS/Godot"
-OUT="../story_jam_web"
+# 导出放在「小游戏/<游戏>/导出/」下（Bilibili Toy 使用手册第六节），不放进工程、不散在外面
+DEST="$HOME/Desktop/程序programs/小游戏/story_jam/导出/B站版"
+OUT="$DEST/story_jam_web"
+ZIP="$DEST/story_jam_web.zip"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 "$GODOT" --headless --export-release "Web" "$OUT/index.html"
@@ -21,6 +24,6 @@ sed -i '' "s/__GAME_VERSION__/$VERSION/" "$OUT/index.html"
 # 加载画面用的标题画面
 cp bilibili/splash.png "$OUT/splash.png"
 gzip -9 -c "$OUT/index.wasm" > "$OUT/index.wasm.gz.bin"
-rm -f ../story_jam_web.zip
-(cd "$OUT" && zip -q -r ../story_jam_web.zip . -x '.DS_Store')
-ls -la "$OUT" ../story_jam_web.zip
+rm -f "$ZIP"
+(cd "$OUT" && zip -q -r "$ZIP" . -x '.DS_Store')
+ls -la "$OUT" "$ZIP"
