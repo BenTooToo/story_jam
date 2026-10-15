@@ -4,8 +4,14 @@
     {
       "name": "story-jam-web",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "../story_jam_web"],
-      "port": 8765
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--directory",
+        "/Users/jiamulin/Desktop/程序programs/小游戏/story_jam/导出/B站版/story_jam_web"
+      ],
+      "port": 8766
     }
   ]
 }

@@ -1,6 +1,7 @@
 extends CanvasLayer
-## 一行「喜欢的话，可以关注我们。  本2兔 · 小名是木木 · 小高星 · 介绍视频」，
-## 选线界面底下、开局前的关注卡片、片尾卡片都用这个。名字能点，点了去那个人的 B 站主页。
+## 一行「喜欢的话，可以关注我们。  本2兔 · 罗马特 · 小名是木木 · 小高星 · 介绍视频」，
+## 选线界面底下、开局前的关注卡片、片尾卡片都用这个。有主页的名字能点，点了去那个人的 B 站主页；
+## 没有的（罗马特）只写名字，颜色淡一点。
 ## 前半句默认跟着关注 / 三连状态变（Toy.thanks_text），也可以换成固定的话（prefix）。
 ## 介绍视频还没发（Toy.VIDEO_BVID 为空）就不显示。
 ## 只是感谢和入口，不锁任何内容。点击判定用事件自己的坐标（触屏转来的点击，鼠标位置不一定跟上了）。
@@ -45,7 +46,10 @@ func _ready() -> void:
 		if not first:
 			_label("  ·  ", DIM)
 		first = false
-		_links[_label(author, LINK)] = author
+		if Toy.AUTHORS[author] == "":
+			_label(author, DIM)
+		else:
+			_links[_label(author, LINK)] = author
 	if show_video and Toy.has_video():
 		_label("  ·  ", DIM)
 		_links[_label("介绍视频", LINK)] = ""

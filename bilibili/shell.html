@@ -94,8 +94,25 @@ body {
 	font-size: 12px;
 }
 
+/* 进度条底下一行小字：下载好了在启动 / 手机有点慢 / 网有点慢 */
+#status-line {
+	position: absolute;
+	bottom: calc(8% - 22px);
+	left: 0;
+	right: 0;
+	color: #8a8580;
+	font-family: sans-serif;
+	font-size: 12px;
+	text-align: center;
+}
+
 #status-notice {
 	display: none;
+	position: relative;
+	z-index: 1;
+	padding: 0.8em 1.2em;
+	background-color: rgba(0, 0, 0, 0.85);
+	white-space: pre-line;
 	margin: 0 2rem;
 	color: #e6e0d9;
 	font-family: sans-serif;
@@ -135,6 +152,7 @@ body {
 		<div id="status">
 			<img id="status-splash" class="pixel" src="splash.png" alt="Story Jam">
 			<div id="status-bar"><div id="status-fill"></div></div>
+			<div id="status-line"></div>
 			<div id="status-version">__GAME_VERSION__</div>
 			<div id="status-notice"></div>
 		</div>
@@ -309,6 +327,42 @@ window.gameVersion = document.getElementById('status-version').textContent;
 		});
 	};
 }());
+
+// 加载到 100% 卡住（《寻找伪人》玩家反馈 2026-10-13）：Godot 的 index.js 编译 wasm 只写了 .then、没接失败，
+// 编译失败（手机内存不够、边下边解压的流半路断了）时 startGame 既不成功也不报错，加载界面永远停在 100%。
+// 这里包一层：边下边编译失败就重新下一遍、整块编译再试一次；还不行就在加载界面上报错（gameBootFail，下面定义）。
+(function () {
+	if (typeof WebAssembly !== 'object') {
+		return;
+	}
+	const realStreaming = WebAssembly.instantiateStreaming;
+	const realInstantiate = WebAssembly.instantiate;
+	function report(e) {
+		if (typeof window.gameBootFail === 'function') {
+			window.gameBootFail(e);
+		}
+		throw e;
+	}
+	function again(imports) {
+		return window.fetch('index.wasm', { cache: 'no-store' }).then(function (res) {
+			return res.arrayBuffer();
+		}).then(function (buf) {
+			return realInstantiate.call(WebAssembly, buf, imports);
+		});
+	}
+	if (typeof realStreaming === 'function') {
+		WebAssembly.instantiateStreaming = function (source, imports) {
+			return realStreaming.call(WebAssembly, source, imports).catch(function (e) {
+				console.warn('wasm streaming failed, retrying', e);
+				return again(imports);
+			}).catch(report);
+		};
+	}
+	WebAssembly.instantiate = function (source, imports) {
+		const p = realInstantiate.call(WebAssembly, source, imports);
+		return source instanceof WebAssembly.Module ? p : p.catch(report);
+	};
+}());
 		</script>
 		<script src="$GODOT_URL"></script>
 		<script>
@@ -320,14 +374,39 @@ const engine = new Engine(GODOT_CONFIG);
 	const status = document.getElementById('status');
 	const fill = document.getElementById('status-fill');
 	const notice = document.getElementById('status-notice');
+	const line = document.getElementById('status-line');
+	const started = Date.now();
 
+	let failed = false;
 	function fail(err) {
+		if (failed) {
+			return;
+		}
+		failed = true;
 		console.error(err);
 		const text = err instanceof Error ? err.message : (typeof err === 'string' ? err : '出了点问题。');
-		notice.textContent = '加载失败，请刷新重试。\n' + text;
-		notice.style.whiteSpace = 'pre-line';
+		const memory = /memory|内存|allocat/i.test(text);
+		notice.textContent = (memory ? '手机内存不够，游戏没能启动。\n关掉后台的其他应用，退出这个页面再重新打开。\n'
+			: '加载失败，请退出后重新打开。\n') + text;
 		notice.style.display = 'block';
+		line.textContent = '';
 	}
+	window.gameBootFail = fail;
+	// 下载完以后还要在手机上编译、启动，慢的手机要十几秒：别让人以为卡死了。一直不动就提示退出重进。
+	let fullAt = 0;
+	let booted = false;
+	const watch = setInterval(function () {
+		if (booted || failed) {
+			clearInterval(watch);
+			return;
+		}
+		if (fullAt > 0 && Date.now() - fullAt > 60000) {
+			clearInterval(watch);
+			fail('启动超时。');
+		} else if (fullAt > 0 && Date.now() - fullAt > 12000) {
+			line.textContent = '手机有点慢，正在启动……';
+		}
+	}, 1000);
 
 	const missing = Engine.getMissingFeatures({
 		threads: GODOT_THREADS_ENABLED,
@@ -339,10 +418,22 @@ const engine = new Engine(GODOT_CONFIG);
 	engine.startGame({
 		'onProgress': function (current, total) {
 			if (current > 0 && total > 0) {
-				fill.style.width = (Math.min(1, current / total) * 100).toFixed(1) + '%';
+				const pct = Math.min(1, current / total);
+				fill.style.width = (pct * 100).toFixed(1) + '%';
+				if (pct >= 1) {
+					fullAt = fullAt || Date.now();
+					if (Date.now() - fullAt <= 12000) {
+						line.textContent = '下载好了，启动中……';
+					}
+				} else if (Date.now() - started > 15000 && pct < 0.5) {
+					line.textContent = '网有点慢，再等等……';
+				} else {
+					line.textContent = Math.floor(pct * 100) + '%';
+				}
 			}
 		},
 	}).then(function () {
+		booted = true;
 		status.remove();
 	}, fail);
 }());
